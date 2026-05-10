@@ -17,11 +17,12 @@
 }
 
 * {
-  @apply border-border outline-ring/50;
+  box-sizing: border-box;
 }
 
 body {
-  @apply bg-background text-foreground;
+  background: hsl(0, 0%, 5.9%);
+  color: hsl(0, 0%, 93.1%);
   font-family: "Space Grotesk", "Noto Sans SC", sans-serif;
 }
 
@@ -34,7 +35,7 @@ a[href],
 select:not(:disabled),
 input[type="checkbox"]:not(:disabled),
 input[type="radio"]:not(:disabled) {
-  @apply cursor-pointer;
+  cursor: pointer;
 }
 
 @layer components {
@@ -93,4 +94,46 @@ input[type="radio"]:not(:disabled) {
 
 .animate-pulse-custom {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Hide scrollbar for all browsers */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Input and select styling */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="date"],
+input[type="time"],
+textarea,
+select {
+  font-family: "Noto Sans SC", sans-serif;
+}
+
+/* Modal animations */
+@keyframes slideUpModal {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-enter {
+  animation: slideUpModal 0.3s ease-out;
 }
