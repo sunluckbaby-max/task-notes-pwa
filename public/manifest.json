@@ -4,10 +4,16 @@
   "description": "一个功能完整的任务记事本应用，支持分类、标签、提醒功能",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0F0F13",
+  "background_color": "#FFFFFF",
   "theme_color": "#8B5CF6",
   "orientation": "portrait",
   "icons": [
+    {
+      "src": "/icons/icon-180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
     {
       "src": "/icons/icon-192.png",
       "sizes": "192x192",
@@ -17,6 +23,12 @@
     {
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-1024.png",
+      "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any maskable"
     }
