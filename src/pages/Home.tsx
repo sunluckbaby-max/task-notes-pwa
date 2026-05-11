@@ -176,12 +176,12 @@ export default function Home() {
               <h1 className="text-3xl font-black tracking-normal text-stone-900">任务记事本</h1>
               <p className="mt-2 text-sm font-medium text-stone-500">让小猫陪你整理每日任务</p>
             </div>
-            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[28px] border border-rose-100 bg-gradient-to-br from-amber-100 to-rose-100 shadow-inner">
+            <div className="relative -mr-2 -mt-3 h-28 w-28 shrink-0">
+              <div className="absolute inset-x-4 bottom-1 h-8 rounded-full bg-rose-200/45 blur-xl" />
               <img
-                src="/cat-photo.jpg"
+                src="/cat-cutout.png"
                 alt="我的猫咪"
-                className="h-full w-full object-cover"
-                style={{ objectPosition: "center 38%" }}
+                className="relative h-full w-full object-contain drop-shadow-[0_14px_22px_rgba(120,80,50,0.25)]"
               />
             </div>
           </div>
