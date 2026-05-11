@@ -8,7 +8,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { Calendar, CheckCircle2, Circle, Clock, Folder, PawPrint, Pencil, Plus, Search, Sparkles, Tag, Trash2, X } from "lucide-react";
-import { toast } from "sonner";
 import { getTasks, addTask, updateTask, deleteTask, getCategories } from "@/lib/storage";
 import type { Task } from "@/lib/storage";
 import { formatDate, isToday, isOverdue } from "@/lib/utils";
@@ -101,7 +100,6 @@ export default function Home() {
 
   const handleSaveTask = () => {
     if (!formData.title.trim()) {
-      toast.error("小猫还不知道任务标题");
       return;
     }
 
@@ -122,10 +120,8 @@ export default function Home() {
 
     if (editingTaskId) {
       updateTask(editingTaskId, payload);
-      toast.success("猫咪已经更新任务");
     } else {
       addTask(payload);
-      toast.success("猫咪已经收好新任务");
     }
 
     refreshTasks();
@@ -140,7 +136,6 @@ export default function Home() {
   const handleDeleteTask = (id: string) => {
     deleteTask(id);
     refreshTasks();
-    toast.success("任务已从猫窝移除");
   };
 
   const handleDeleteEditingTask = () => {
