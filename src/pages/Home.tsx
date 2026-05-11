@@ -1,18 +1,16 @@
 /**
- * Design: Dark Tech Craft - iPhone Style
- * - Background: Deep space black (#0F0F13)
- * - Primary: Purple (#8B5CF6)
- * - Cards: Glassmorphism (backdrop-blur, semi-transparent)
- * - Typography: Space Grotesk (headings) + Noto Sans SC (body)
- * - Layout: Mobile-first, max-width 430px, centered
+ * Cute Cat Cartoon Theme - Mobile Task Notes PWA
+ * - Soft peach, cream, rose, and lavender palette
+ * - Cat mascot header, paw-like chips, rounded note cards
+ * - Keeps task create, edit, delete, complete, filters, tags, localStorage
  */
 
-import { useState, useEffect, useMemo } from "react";
-import { Plus, Trash2, CheckCircle2, Circle, Tag, Folder, Search, X, Clock, Calendar, Pencil } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { Calendar, CheckCircle2, Circle, Clock, Folder, PawPrint, Pencil, Plus, Search, Sparkles, Tag, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { getTasks, addTask, updateTask, deleteTask, getCategories } from "@/lib/storage";
 import type { Task } from "@/lib/storage";
-
 import { formatDate, isToday, isOverdue } from "@/lib/utils";
 
 type FilterType = "all" | "today" | "upcoming" | "completed" | "overdue";
@@ -25,6 +23,16 @@ const emptyFormData = {
   dueDate: "",
   reminderTime: "",
 };
+
+const filterLabels: Record<FilterType, string> = {
+  all: "全部",
+  today: "今天",
+  upcoming: "即将",
+  overdue: "逾期",
+  completed: "完成",
+};
+
+const catMoods = ["ฅ^•ﻌ•^ฅ", "(=^･ω･^=)", "ฅ(＾・ω・＾ฅ)", "(=^ ◡ ^=)"];
 
 export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -75,28 +83,34 @@ export default function Home() {
     resetForm();
   };
 
-  const filteredTasks = tasks.filter((task) => {
-    if (filter === "completed") return task.completed;
-    if (filter === "today") return task.dueDate && isToday(task.dueDate) && !task.completed;
-    if (filter === "upcoming") return task.dueDate && !task.completed && !isToday(task.dueDate);
-    if (filter === "overdue") return task.dueDate && isOverdue(task.dueDate) && !task.completed;
-    if (!task.completed) return true;
-    return false;
-  })
+  const filteredTasks = tasks
+    .filter((task) => {
+      if (filter === "completed") return task.completed;
+      if (filter === "today") return task.dueDate && isToday(task.dueDate) && !task.completed;
+      if (filter === "upcoming") return task.dueDate && !task.completed && !isToday(task.dueDate);
+      if (filter === "overdue") return task.dueDate && isOverdue(task.dueDate) && !task.completed;
+      if (!task.completed) return true;
+      return false;
+    })
     .filter((task) => !selectedCategory || task.category === selectedCategory)
     .filter((task) => !selectedTag || task.tags.includes(selectedTag))
-    .filter((task) => !searchText || task.title.toLowerCase().includes(searchText.toLowerCase()) || task.description.toLowerCase().includes(searchText.toLowerCase()));
+    .filter(
+      (task) =>
+        !searchText ||
+        task.title.toLowerCase().includes(searchText.toLowerCase()) ||
+        task.description.toLowerCase().includes(searchText.toLowerCase())
+    );
 
   const handleSaveTask = () => {
     if (!formData.title.trim()) {
-      toast.error("请输入任务标题");
+      toast.error("小猫还不知道任务标题");
       return;
     }
 
     const tags = formData.tags
       .split(",")
-      .map((t) => t.trim())
-      .filter((t) => t);
+      .map((tag) => tag.trim())
+      .filter(Boolean);
 
     const payload = {
       title: formData.title.trim(),
@@ -110,10 +124,10 @@ export default function Home() {
 
     if (editingTaskId) {
       updateTask(editingTaskId, payload);
-      toast.success("任务已更新");
+      toast.success("猫咪已经更新任务");
     } else {
       addTask(payload);
-      toast.success("任务已添加");
+      toast.success("猫咪已经收好新任务");
     }
 
     refreshTasks();
@@ -128,7 +142,7 @@ export default function Home() {
   const handleDeleteTask = (id: string) => {
     deleteTask(id);
     refreshTasks();
-    toast.success("任务已删除");
+    toast.success("任务已从猫窝移除");
   };
 
   const handleDeleteEditingTask = () => {
@@ -138,295 +152,288 @@ export default function Home() {
   };
 
   const getCategoryColor = (categoryId: string) => {
-    const cat = categories.find((c) => c.id === categoryId);
-    return cat?.color || "#8B5CF6";
+    const cat = categories.find((category) => category.id === categoryId);
+    return cat?.color || "#FB7185";
   };
 
   const stats = {
     total: tasks.length,
-    completed: tasks.filter((t) => t.completed).length,
-    today: tasks.filter((t) => t.dueDate && isToday(t.dueDate) && !t.completed).length,
-    overdue: tasks.filter((t) => t.dueDate && isOverdue(t.dueDate) && !t.completed).length,
+    completed: tasks.filter((task) => task.completed).length,
+    today: tasks.filter((task) => task.dueDate && isToday(task.dueDate) && !task.completed).length,
+    overdue: tasks.filter((task) => task.dueDate && isOverdue(task.dueDate) && !task.completed).length,
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0F0F13] via-[#1a1a2e] to-[#0F0F13] flex items-start justify-center pt-4 pb-20">
-      <div className="w-full max-w-[430px] px-4">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-violet-400 bg-clip-text text-transparent mb-1">任务记事本</h1>
-          <p className="text-slate-400 text-sm">管理你的每日任务和提醒</p>
-        </div>
-
-        <div className="grid grid-cols-4 gap-3 mb-6">
-          {[
-            { label: "总计", value: stats.total, color: "from-blue-600 to-blue-500" },
-            { label: "完成", value: stats.completed, color: "from-emerald-600 to-emerald-500" },
-            { label: "今天", value: stats.today, color: "from-orange-600 to-orange-500" },
-            { label: "逾期", value: stats.overdue, color: "from-red-600 to-red-500" },
-          ].map((stat) => (
-            <div key={stat.label} className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 text-center hover:bg-white/8 transition-all">
-              <div className={`text-2xl font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent mb-1`}>
-                {stat.value}
+    <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_20%_0%,#fed7aa_0,#fff7ed_28%,#fdf2f8_62%,#ede9fe_100%)] text-stone-800">
+      <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col px-4 pb-24 pt-4">
+        <header className="relative mb-5 overflow-hidden rounded-[32px] border border-white/80 bg-white/75 p-5 shadow-[0_18px_60px_rgba(251,146,60,0.22)] backdrop-blur-xl">
+          <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-rose-200/70" />
+          <div className="absolute -bottom-12 left-8 h-28 w-28 rounded-full bg-amber-200/70" />
+          <div className="relative flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-500">
+                <Sparkles className="h-3.5 w-3.5" />
+                猫咪任务小窝
               </div>
-              <div className="text-xs text-slate-400 font-medium">{stat.label}</div>
+              <h1 className="text-3xl font-black tracking-normal text-stone-900">任务记事本</h1>
+              <p className="mt-2 text-sm font-medium text-stone-500">让小猫陪你整理每日任务</p>
+            </div>
+            <div className="grid h-20 w-20 shrink-0 place-items-center rounded-[28px] border border-rose-100 bg-gradient-to-br from-amber-100 to-rose-100 text-3xl shadow-inner">
+              {catMoods[stats.total % catMoods.length]}
+            </div>
+          </div>
+        </header>
+
+        <section className="mb-5 grid grid-cols-4 gap-2">
+          {[
+            { label: "全部", value: stats.total, tone: "bg-rose-100 text-rose-600" },
+            { label: "完成", value: stats.completed, tone: "bg-emerald-100 text-emerald-600" },
+            { label: "今天", value: stats.today, tone: "bg-amber-100 text-amber-700" },
+            { label: "逾期", value: stats.overdue, tone: "bg-violet-100 text-violet-600" },
+          ].map((stat) => (
+            <div key={stat.label} className="rounded-3xl border border-white/80 bg-white/70 p-3 text-center shadow-[0_12px_35px_rgba(120,80,50,0.10)] backdrop-blur">
+              <div className={`mx-auto mb-1 grid h-10 w-10 place-items-center rounded-2xl text-lg font-black ${stat.tone}`}>{stat.value}</div>
+              <div className="text-xs font-bold text-stone-500">{stat.label}</div>
             </div>
           ))}
-        </div>
+        </section>
 
-        <div className="relative mb-6">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+        <label className="mb-4 flex min-h-14 w-full items-center gap-3 rounded-[24px] border border-white/80 bg-white/80 px-4 shadow-[0_12px_35px_rgba(120,80,50,0.10)] backdrop-blur">
+          <Search className="h-5 w-5 text-rose-300" />
           <input
             type="text"
-            placeholder="搜索任务..."
+            placeholder="搜索猫窝里的任务..."
             value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all"
+            onChange={(event) => setSearchText(event.target.value)}
+            className="min-w-0 flex-1 bg-transparent text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-400"
           />
-        </div>
+        </label>
 
-        <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide">
-          {(["all", "today", "upcoming", "overdue", "completed"] as FilterType[]).map((f) => (
+        <nav className="mb-5 flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {(["all", "today", "upcoming", "overdue", "completed"] as FilterType[]).map((item) => (
             <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                filter === f
-                  ? "bg-gradient-to-r from-purple-600 to-violet-600 text-white shadow-lg shadow-purple-500/20"
-                  : "bg-white/5 text-slate-400 border border-white/10 hover:bg-white/8"
+              key={item}
+              onClick={() => setFilter(item)}
+              className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-black transition ${
+                filter === item
+                  ? "bg-stone-900 text-white shadow-[0_10px_28px_rgba(39,39,42,0.22)]"
+                  : "border border-white/80 bg-white/70 text-stone-500"
               }`}
             >
-              {f === "all" ? "全部" : f === "today" ? "今天" : f === "upcoming" ? "即将" : f === "overdue" ? "逾期" : "已完成"}
+              <PawPrint className="h-4 w-4" />
+              {filterLabels[item]}
             </button>
           ))}
-        </div>
+        </nav>
 
         {categories.length > 0 && (
-          <div className="mb-6">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-1">分类</p>
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
+          <section className="mb-5">
+            <p className="mb-2 px-1 text-xs font-black uppercase tracking-wider text-stone-400">分类</p>
+            <div className="flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               <button
                 onClick={() => setSelectedCategory(null)}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                  selectedCategory === null
-                    ? "bg-white/10 text-white border border-white/20"
-                    : "bg-white/5 text-slate-400 border border-white/10 hover:bg-white/8"
+                className={`shrink-0 rounded-full px-4 py-2 text-sm font-black ${
+                  selectedCategory === null ? "bg-rose-400 text-white" : "border border-white/80 bg-white/70 text-stone-500"
                 }`}
               >
                 全部
               </button>
-              {categories.map((cat) => (
+              {categories.map((category) => (
                 <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2 ${
-                    selectedCategory === cat.id ? "text-white" : "text-slate-400"
-                  }`}
+                  key={category.id}
+                  onClick={() => setSelectedCategory(selectedCategory === category.id ? null : category.id)}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/80 bg-white/70 px-4 py-2 text-sm font-black text-stone-500"
                   style={{
-                    borderColor: selectedCategory === cat.id ? cat.color : "rgba(255,255,255,0.1)",
-                    backgroundColor: selectedCategory === cat.id ? `${cat.color}20` : "rgba(255,255,255,0.05)",
-                    border: "1px solid",
+                    color: selectedCategory === category.id ? category.color : undefined,
+                    boxShadow: selectedCategory === category.id ? `inset 0 0 0 2px ${category.color}55` : undefined,
                   }}
                 >
-                  <Folder className="w-4 h-4" />
-                  {cat.name}
+                  <Folder className="h-4 w-4" />
+                  {category.name}
                 </button>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
         {allTags.length > 0 && (
-          <div className="mb-6">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 px-1">标签</p>
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
+          <section className="mb-5">
+            <p className="mb-2 px-1 text-xs font-black uppercase tracking-wider text-stone-400">标签</p>
+            <div className="flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {allTags.map((tag) => (
                 <button
                   key={tag}
                   onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1 ${
-                    selectedTag === tag
-                      ? "bg-purple-600/30 text-purple-300 border border-purple-500/50"
-                      : "bg-white/5 text-slate-400 border border-white/10 hover:bg-white/8"
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-black ${
+                    selectedTag === tag ? "bg-violet-400 text-white" : "border border-white/80 bg-white/70 text-stone-500"
                   }`}
                 >
-                  <Tag className="w-3 h-3" />
+                  <Tag className="h-3.5 w-3.5" />
                   {tag}
                 </button>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
-        <div className="space-y-3 mb-8">
+        <section className="flex flex-1 flex-col gap-3">
           {filteredTasks.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="text-6xl mb-4">📝</div>
-              <p className="text-slate-400 mb-2 font-medium">没有任务</p>
-              <p className="text-slate-500 text-sm">点击右下角的 + 按钮添加新任务</p>
+            <div className="grid min-h-[230px] place-items-center rounded-[32px] border border-dashed border-rose-200 bg-white/60 p-6 text-center">
+              <div>
+                <div className="mb-3 text-6xl">(=^･ω･^=)</div>
+                <p className="font-black text-stone-700">猫窝现在很安静</p>
+                <p className="mt-1 text-sm font-medium text-stone-400">点右下角的小爪子添加任务</p>
+              </div>
             </div>
           ) : (
             filteredTasks.map((task) => (
-              <div key={task.id} className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 hover:bg-white/8 transition-all group">
+              <article key={task.id} className="rounded-[28px] border border-white/80 bg-white/80 p-4 shadow-[0_14px_42px_rgba(120,80,50,0.12)] backdrop-blur">
                 <div className="flex gap-3">
                   <button
                     onClick={() => handleToggleTask(task.id, task.completed)}
-                    className="flex-shrink-0 mt-0.5 text-slate-400 hover:text-purple-400 transition-colors"
+                    className="mt-1 shrink-0 text-rose-300 transition hover:text-rose-500"
                     aria-label={task.completed ? "标记为未完成" : "标记为完成"}
                   >
-                    {task.completed ? <CheckCircle2 className="w-6 h-6 text-emerald-500" /> : <Circle className="w-6 h-6" />}
+                    {task.completed ? <CheckCircle2 className="h-7 w-7 text-emerald-400" /> : <Circle className="h-7 w-7" />}
                   </button>
-                  <button type="button" onClick={() => openEditTaskForm(task)} className="flex-1 min-w-0 text-left" aria-label="编辑任务">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className={`font-semibold text-base ${task.completed ? "text-slate-500 line-through" : "text-slate-100"}`}>
-                        {task.title}
-                      </h3>
-                      <Pencil className="w-4 h-4 flex-shrink-0 text-slate-600" />
+
+                  <button type="button" onClick={() => openEditTaskForm(task)} className="min-w-0 flex-1 text-left" aria-label="编辑任务">
+                    <div className="mb-2 flex items-start justify-between gap-2">
+                      <h3 className={`text-base font-black ${task.completed ? "text-stone-400 line-through" : "text-stone-900"}`}>{task.title}</h3>
+                      <Pencil className="h-4 w-4 shrink-0 text-rose-300" />
                     </div>
-                    {task.description && <p className="text-slate-400 text-sm mb-3">{task.description}</p>}
-                    <div className="flex flex-wrap gap-2 items-center">
+                    {task.description && <p className="mb-3 text-sm font-medium leading-6 text-stone-500">{task.description}</p>}
+                    <div className="flex flex-wrap items-center gap-2">
                       <span
-                        className="px-3 py-1 rounded-full text-xs font-medium text-white"
-                        style={{
-                          backgroundColor: getCategoryColor(task.category) + "30",
-                          borderLeft: `3px solid ${getCategoryColor(task.category)}`,
-                        }}
+                        className="rounded-full px-3 py-1 text-xs font-black text-white"
+                        style={{ backgroundColor: getCategoryColor(task.category) }}
                       >
-                        {categories.find((c) => c.id === task.category)?.name}
+                        {categories.find((category) => category.id === task.category)?.name}
                       </span>
                       {task.tags.map((tag) => (
-                        <span key={tag} className="px-3 py-1 rounded-full text-xs font-medium bg-purple-600/20 text-purple-300 border border-purple-500/30">
+                        <span key={tag} className="rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-500">
                           #{tag}
                         </span>
                       ))}
                       {task.dueDate && (
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${
-                            isOverdue(task.dueDate) && !task.completed
-                              ? "bg-red-600/20 text-red-300 border border-red-500/30"
-                              : "bg-blue-600/20 text-blue-300 border border-blue-500/30"
-                          }`}
-                        >
-                          <Calendar className="w-3 h-3" />
+                        <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black ${isOverdue(task.dueDate) && !task.completed ? "bg-rose-100 text-rose-500" : "bg-sky-100 text-sky-500"}`}>
+                          <Calendar className="h-3 w-3" />
                           {formatDate(task.dueDate)}
                         </span>
                       )}
                       {task.reminderTime && (
-                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-600/20 text-orange-300 border border-orange-500/30 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-600">
+                          <Clock className="h-3 w-3" />
                           {task.reminderTime}
                         </span>
                       )}
                     </div>
                   </button>
-                  <button onClick={() => handleDeleteTask(task.id)} className="flex-shrink-0 text-slate-500 hover:text-red-400 transition-colors p-1" aria-label="删除任务">
-                    <Trash2 className="w-5 h-5" />
+
+                  <button onClick={() => handleDeleteTask(task.id)} className="shrink-0 rounded-2xl bg-rose-50 p-2 text-rose-300 transition hover:bg-rose-100 hover:text-rose-500" aria-label="删除任务">
+                    <Trash2 className="h-5 w-5" />
                   </button>
                 </div>
-              </div>
+              </article>
             ))
           )}
-        </div>
+        </section>
 
-        <div className="fixed bottom-8 right-8">
-          <button
-            onClick={openNewTaskForm}
-            className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 text-white shadow-lg shadow-purple-500/40 flex items-center justify-center transition-all hover:scale-110 active:scale-95"
-          >
-            <Plus className="w-8 h-8" />
-          </button>
-        </div>
+        <button
+          onClick={openNewTaskForm}
+          className="fixed bottom-7 right-[max(1.25rem,calc((100vw-430px)/2+1.25rem))] grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-rose-400 to-amber-300 text-white shadow-[0_16px_36px_rgba(251,113,133,0.38)] transition active:scale-95"
+          aria-label="新建任务"
+        >
+          <Plus className="h-8 w-8" />
+        </button>
 
         {showForm && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end z-50">
-            <div className="w-full bg-gradient-to-t from-[#0F0F13] to-[#1a1a2e] rounded-t-3xl border-t border-white/10 p-6 pb-8 max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-slate-100">{editingTaskId ? "编辑任务" : "新建任务"}</h2>
-                <button onClick={closeForm} className="text-slate-400 hover:text-slate-200 transition-colors p-1">
-                  <X className="w-6 h-6" />
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-950/30 px-3 backdrop-blur-sm">
+            <div className="max-h-[90vh] w-full max-w-[430px] overflow-y-auto rounded-t-[34px] border border-white/80 bg-[#fffaf3] p-5 pb-8 shadow-[0_-22px_70px_rgba(120,80,50,0.20)]">
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-black text-rose-400">{editingTaskId ? "修改猫咪任务" : "新任务进猫窝"}</p>
+                  <h2 className="text-2xl font-black text-stone-900">{editingTaskId ? "编辑任务" : "新建任务"}</h2>
+                </div>
+                <button onClick={closeForm} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-stone-400 shadow-sm">
+                  <X className="h-6 w-6" />
                 </button>
               </div>
 
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
-                    任务标题 <span className="text-red-400">*</span>
-                  </label>
+                <FieldLabel label="任务标题" required>
                   <input
                     type="text"
-                    placeholder="输入任务标题..."
+                    placeholder="比如：整理明天计划"
                     value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all"
+                    onChange={(event) => setFormData({ ...formData, title: event.target.value })}
+                    className="w-full rounded-2xl border border-rose-100 bg-white px-4 py-3 text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-300 focus:ring-2 focus:ring-rose-200"
                   />
-                </div>
+                </FieldLabel>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">描述</label>
+                <FieldLabel label="描述">
                   <textarea
-                    placeholder="输入任务描述..."
+                    placeholder="写一点备注，小猫会帮你记住"
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    onChange={(event) => setFormData({ ...formData, description: event.target.value })}
                     rows={3}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all resize-none"
+                    className="w-full resize-none rounded-2xl border border-rose-100 bg-white px-4 py-3 text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-300 focus:ring-2 focus:ring-rose-200"
                   />
-                </div>
+                </FieldLabel>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">分类</label>
+                <FieldLabel label="分类">
                   <select
                     value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all"
+                    onChange={(event) => setFormData({ ...formData, category: event.target.value })}
+                    className="w-full rounded-2xl border border-rose-100 bg-white px-4 py-3 text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-300 focus:ring-2 focus:ring-rose-200"
                   >
-                    {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id} className="bg-slate-900 text-slate-100">
-                        {cat.name}
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
                       </option>
                     ))}
                   </select>
-                </div>
+                </FieldLabel>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">标签</label>
+                <FieldLabel label="标签">
                   <input
                     type="text"
                     placeholder="用逗号分隔，例如：紧急, 重要"
                     value={formData.tags}
-                    onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all"
+                    onChange={(event) => setFormData({ ...formData, tags: event.target.value })}
+                    className="w-full rounded-2xl border border-rose-100 bg-white px-4 py-3 text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-300 focus:ring-2 focus:ring-rose-200"
                   />
+                </FieldLabel>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <FieldLabel label="截止日期">
+                    <input
+                      type="date"
+                      value={formData.dueDate}
+                      onChange={(event) => setFormData({ ...formData, dueDate: event.target.value })}
+                      className="w-full rounded-2xl border border-rose-100 bg-white px-4 py-3 text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-300 focus:ring-2 focus:ring-rose-200"
+                    />
+                  </FieldLabel>
+                  <FieldLabel label="提醒时间">
+                    <input
+                      type="time"
+                      value={formData.reminderTime}
+                      onChange={(event) => setFormData({ ...formData, reminderTime: event.target.value })}
+                      className="w-full rounded-2xl border border-rose-100 bg-white px-4 py-3 text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-300 focus:ring-2 focus:ring-rose-200"
+                    />
+                  </FieldLabel>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">截止日期</label>
-                  <input
-                    type="date"
-                    value={formData.dueDate}
-                    onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">提醒时间</label>
-                  <input
-                    type="time"
-                    value={formData.reminderTime}
-                    onChange={(e) => setFormData({ ...formData, reminderTime: e.target.value })}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-transparent transition-all"
-                  />
-                </div>
-
-                <div className="flex gap-3 pt-4">
+                <div className="flex gap-3 pt-2">
                   {editingTaskId && (
-                    <button onClick={handleDeleteEditingTask} className="px-4 py-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 font-medium hover:bg-red-500/15 transition-all">
+                    <button onClick={handleDeleteEditingTask} className="rounded-2xl bg-rose-100 px-4 py-3 font-black text-rose-500">
                       删除
                     </button>
                   )}
-                  <button onClick={closeForm} className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-slate-300 font-medium hover:bg-white/10 transition-all">
+                  <button onClick={closeForm} className="flex-1 rounded-2xl bg-white px-4 py-3 font-black text-stone-500 shadow-sm">
                     取消
                   </button>
-                  <button onClick={handleSaveTask} className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 rounded-xl text-white font-medium shadow-lg shadow-purple-500/20 transition-all">
+                  <button onClick={handleSaveTask} className="flex-1 rounded-2xl bg-stone-900 px-4 py-3 font-black text-white shadow-[0_10px_26px_rgba(39,39,42,0.22)]">
                     {editingTaskId ? "保存修改" : "创建任务"}
                   </button>
                 </div>
@@ -436,5 +443,17 @@ export default function Home() {
         )}
       </div>
     </div>
+  );
+}
+
+function FieldLabel({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
+  return (
+    <label className="grid gap-2 text-sm font-black text-stone-600">
+      <span>
+        {label}
+        {required && <span className="text-rose-400"> *</span>}
+      </span>
+      {children}
+    </label>
   );
 }
