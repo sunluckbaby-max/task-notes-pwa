@@ -32,8 +32,6 @@ const filterLabels: Record<FilterType, string> = {
   completed: "完成",
 };
 
-const catMoods = ["ฅ^•ﻌ•^ฅ", "(=^･ω･^=)", "ฅ(＾・ω・＾ฅ)", "(=^ ◡ ^=)"];
-
 export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories] = useState(getCategories());
@@ -178,8 +176,13 @@ export default function Home() {
               <h1 className="text-3xl font-black tracking-normal text-stone-900">任务记事本</h1>
               <p className="mt-2 text-sm font-medium text-stone-500">让小猫陪你整理每日任务</p>
             </div>
-            <div className="grid h-20 w-20 shrink-0 place-items-center rounded-[28px] border border-rose-100 bg-gradient-to-br from-amber-100 to-rose-100 text-3xl shadow-inner">
-              {catMoods[stats.total % catMoods.length]}
+            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[28px] border border-rose-100 bg-gradient-to-br from-amber-100 to-rose-100 shadow-inner">
+              <img
+                src="/cat-photo.jpg"
+                alt="我的猫咪"
+                className="h-full w-full object-cover"
+                style={{ objectPosition: "center 38%" }}
+              />
             </div>
           </div>
         </header>
