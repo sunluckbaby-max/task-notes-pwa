@@ -10,7 +10,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { Plus, Trash2, CheckCircle2, Circle, Tag, Folder, Search, X, Clock, Calendar, Pencil } from "lucide-react";
 import { toast } from "sonner";
-import { getTasks, addTask, updateTask, deleteTask, getCategories, Task } from "@/lib/storage";
+import { getTasks, addTask, updateTask, deleteTask, getCategories } from "@/lib/storage";
+import type { Task } from "@/lib/storage";
+
 import { formatDate, isToday, isOverdue } from "@/lib/utils";
 
 type FilterType = "all" | "today" | "upcoming" | "completed" | "overdue";
