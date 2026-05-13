@@ -461,7 +461,7 @@ export default function Home() {
                     <Lock className="h-3.5 w-3.5" strokeWidth={iconStroke} />
                     同步空间登录
                   </div>
-                  <h1 className="text-3xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-rose-500 via-pink-400 to-amber-400 drop-shadow-[0_6px_14px_rgba(251,113,133,0.16)]">任务记事本</h1>
+                  <h1 className="text-3xl font-black tracking-normal text-stone-900">任务记事本</h1>
                   <p className="mt-2 text-sm font-bold leading-6 text-stone-500">输入同一个同步码和密码，电脑与手机就会进入同一个猫咪任务空间。</p>
                 </div>
                 <img
@@ -568,11 +568,10 @@ export default function Home() {
           <div className="absolute -bottom-12 left-8 h-28 w-28 rounded-full bg-amber-200/70" />
           <div className="relative flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-500">
-                <Sparkles className="h-3.5 w-3.5" strokeWidth={iconStroke} />
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-rose-100 px-4 py-2 text-lg font-black text-rose-500 shadow-[0_8px_18px_rgba(251,113,133,0.12)]">
+                <Sparkles className="h-5 w-5" strokeWidth={iconStroke} />
                 猫咪任务小窝
               </div>
-              <h1 className="text-3xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-rose-500 via-pink-400 to-amber-400 drop-shadow-[0_6px_14px_rgba(251,113,133,0.16)]">任务记事本</h1>
               <p className="mt-2 text-sm font-medium text-stone-500">让小猫陪你整理每日任务</p>
               <button type="button" onClick={leaveSpace} className="mt-3 rounded-full bg-white/70 px-3 py-1 text-xs font-black text-rose-400">
                 切换同步空间
