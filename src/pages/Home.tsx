@@ -801,15 +801,12 @@ export default function Home() {
                           #{tag}
                         </span>
                       ))}
-                      {task.dueDate && (
+                      {(task.dueDate || task.reminderTime) && (
                         <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-black ${isOverdue(task.dueDate) && !task.completed ? "bg-rose-100 text-rose-500" : "bg-sky-100 text-sky-500"}`}>
                           <Calendar className="h-3 w-3" strokeWidth={iconStroke} />
-                          {formatDate(task.dueDate)}
-                        </span>
-                      )}
-                      {task.reminderTime && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-black text-amber-600">
-                          <Clock className="h-3 w-3" strokeWidth={iconStroke} />
+                          {task.dueDate ? formatDate(task.dueDate) : "未定日期"}
+                          {task.reminderTime ? <span className="text-stone-300">·</span> : null}
+                          {task.reminderTime ? <Clock className="h-3 w-3" strokeWidth={iconStroke} /> : null}
                           {task.reminderTime}
                         </span>
                       )}
@@ -906,32 +903,29 @@ export default function Home() {
                       #{tag}
                     </span>
                   ))}
-                  {viewingTask.dueDate && (
+                  {(viewingTask.dueDate || viewingTask.reminderTime) && (
                     <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black ${isOverdue(viewingTask.dueDate) && !viewingTask.completed ? "bg-rose-100 text-rose-500" : "bg-sky-100 text-sky-500"}`}>
                       <Calendar className="h-3 w-3" strokeWidth={iconStroke} />
-                      {formatDate(viewingTask.dueDate)}
-                    </span>
-                  )}
-                  {viewingTask.reminderTime && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-600">
-                      <Clock className="h-3 w-3" strokeWidth={iconStroke} />
+                      {viewingTask.dueDate ? formatDate(viewingTask.dueDate) : "未定日期"}
+                      {viewingTask.reminderTime ? <span className="text-stone-300">·</span> : null}
+                      {viewingTask.reminderTime ? <Clock className="h-3 w-3" strokeWidth={iconStroke} /> : null}
                       {viewingTask.reminderTime}
                     </span>
                   )}
                 </div>
 
-                <div className="rounded-[28px] bg-white/70 p-5">
+                <div className="rounded-[26px] bg-white/70 px-3.5 py-4">
                   {detailEditing ? (
                     <textarea
                       value={detailDraft.description}
                       onChange={(event) => setDetailDraft((current) => ({ ...current, description: event.target.value }))}
                       placeholder="写一点备注，小猫会帮你记住"
-                      className="min-h-[280px] w-full resize-none bg-transparent text-[16px] font-medium leading-8 text-stone-600 outline-none placeholder:text-stone-300"
+                      className="min-h-[280px] w-full resize-none bg-transparent text-[15px] font-medium leading-7 text-stone-600 outline-none placeholder:text-stone-300"
                     />
                   ) : viewingTask.description ? (
-                    <p className="whitespace-pre-wrap break-words text-[16px] font-medium leading-8 text-stone-600">{viewingTask.description}</p>
+                    <p className="whitespace-pre-wrap break-words text-[15px] font-medium leading-7 text-stone-600">{viewingTask.description}</p>
                   ) : (
-                    <p className="text-[16px] font-bold text-stone-300">这里还没有写描述。</p>
+                    <p className="text-[15px] font-bold text-stone-300">这里还没有写描述。</p>
                   )}
                 </div>
 
