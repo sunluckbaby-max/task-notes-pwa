@@ -23,6 +23,10 @@ const emptyFormData = {
   reminderTime: "",
 };
 
+const DEFAULT_SPACE_CODE = "CAT-TASKS";
+const SPACE_CODE_KEY = "cat_task_space_code";
+const MIGRATED_SPACE_KEY_PREFIX = "cat_task_migrated_";
+
 const filterLabels: Record<FilterType, string> = {
   all: "全部",
   today: "今天",
@@ -38,6 +42,59 @@ const normalizeCategories = (categories: ReturnType<typeof getCategories>) =>
     .filter((category) => category.id !== "shopping")
     .map((category) => (category.id === "personal" ? { ...category, name: "生活" } : category));
 
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const canSync = Boolean(supabaseUrl && supabaseAnonKey);
+
+type TaskRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string;
+  tags: string[] | null;
+  due_date: string | null;
+  due_time: string | null;
+  completed: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+const toTask = (row: TaskRow): Task => ({
+  id: row.id,
+  title: row.title,
+  description: row.description || "",
+  category: normalizeCategoryId(row.category || "work"),
+  tags: row.tags || [],
+  dueDate: row.due_date || "",
+  reminderTime: row.due_time || "",
+  completed: row.completed,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+const remoteRequest = async (path: string, options: RequestInit = {}) => {
+  if (!supabaseUrl || !supabaseAnonKey) throw new Error("Supabase is not configured");
+
+  const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
+    ...options,
+    headers: {
+      apikey: supabaseAnonKey,
+      Authorization: `Bearer ${supabaseAnonKey}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+      ...(options.headers || {}),
+    },
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || response.statusText);
+  }
+
+  if (response.status === 204) return null;
+  return response.json();
+};
+
 export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories] = useState(() => normalizeCategories(getCategories()));
@@ -52,9 +109,11 @@ export default function Home() {
   const [showForm, setShowForm] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [formData, setFormData] = useState(emptyFormData);
+  const [spaceCode, setSpaceCode] = useState(() => localStorage.getItem(SPACE_CODE_KEY) || DEFAULT_SPACE_CODE);
+  const [spaceDraft, setSpaceDraft] = useState(() => localStorage.getItem(SPACE_CODE_KEY) || DEFAULT_SPACE_CODE);
+  const [syncMessage, setSyncMessage] = useState(canSync ? "云端同步已开启" : "本地模式：请检查 Vercel 环境变量");
 
   useEffect(() => {
-    setTasks(getTasks());
     document.documentElement.style.background = "#fff7ed";
     document.body.style.background = "#fff7ed";
 
@@ -72,7 +131,55 @@ export default function Home() {
     ensureMeta("apple-mobile-web-app-status-bar-style", "default");
   }, []);
 
-  const refreshTasks = () => setTasks(getTasks());
+  const refreshTasks = async (targetSpaceCode = spaceCode) => {
+    if (!canSync) {
+      setTasks(getTasks());
+      setSyncMessage("本地模式：请检查 Vercel 环境变量");
+      return;
+    }
+
+    try {
+      const query = `tasks?select=*&space_code=eq.${encodeURIComponent(targetSpaceCode)}&order=updated_at.desc`;
+      const data = (await remoteRequest(query, { method: "GET" })) as TaskRow[];
+      const localTasks = getTasks();
+      const migratedKey = `${MIGRATED_SPACE_KEY_PREFIX}${targetSpaceCode}`;
+
+      if ((!data || data.length === 0) && localTasks.length > 0 && !localStorage.getItem(migratedKey)) {
+        const migratedRows = localTasks.map((task) => ({
+          space_code: targetSpaceCode,
+          title: task.title,
+          description: task.description || null,
+          category: normalizeCategoryId(task.category || "work"),
+          tags: task.tags || [],
+          due_date: task.dueDate || null,
+          due_time: task.reminderTime || null,
+          completed: task.completed || false,
+        }));
+        const migrated = (await remoteRequest("tasks", { method: "POST", body: JSON.stringify(migratedRows) })) as TaskRow[];
+        localStorage.setItem(migratedKey, "1");
+        setTasks((migrated || []).map(toTask));
+        setSyncMessage(`已把本地任务同步到：${targetSpaceCode}`);
+        return;
+      }
+
+      setTasks((data || []).map(toTask));
+      setSyncMessage(`正在同步：${targetSpaceCode}`);
+    } catch (error) {
+      setTasks(getTasks());
+      setSyncMessage(error instanceof Error ? error.message : "同步失败，已切回本地数据");
+    }
+  };
+
+  useEffect(() => {
+    refreshTasks(spaceCode);
+    if (!canSync) return undefined;
+
+    const timer = window.setInterval(() => {
+      refreshTasks(spaceCode);
+    }, 12000);
+
+    return () => window.clearInterval(timer);
+  }, [spaceCode]);
 
   const resetForm = () => {
     setFormData(emptyFormData);
@@ -120,7 +227,16 @@ export default function Home() {
         task.description.toLowerCase().includes(searchText.toLowerCase())
     );
 
-  const handleSaveTask = () => {
+  const saveSpaceCode = () => {
+    const nextCode = spaceDraft.trim() || DEFAULT_SPACE_CODE;
+    localStorage.setItem(SPACE_CODE_KEY, nextCode);
+    setSpaceCode(nextCode);
+    setSelectedCategory(null);
+    setSelectedTag(null);
+    setSearchText("");
+  };
+
+  const handleSaveTask = async () => {
     if (!formData.title.trim()) {
       return;
     }
@@ -140,29 +256,92 @@ export default function Home() {
       completed: editingTaskId ? tasks.find((task) => task.id === editingTaskId)?.completed ?? false : false,
     };
 
-    if (editingTaskId) {
-      updateTask(editingTaskId, payload);
-    } else {
-      addTask(payload);
+    if (!canSync) {
+      if (editingTaskId) {
+        updateTask(editingTaskId, payload);
+      } else {
+        addTask(payload);
+      }
+
+      await refreshTasks();
+      closeForm();
+      return;
     }
 
-    refreshTasks();
-    closeForm();
+    try {
+      if (editingTaskId) {
+        await remoteRequest(`tasks?id=eq.${editingTaskId}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            title: payload.title,
+            description: payload.description || null,
+            category: payload.category,
+            tags: payload.tags,
+            due_date: payload.dueDate || null,
+            due_time: payload.reminderTime || null,
+            completed: payload.completed,
+            updated_at: new Date().toISOString(),
+          }),
+        });
+      } else {
+        await remoteRequest("tasks", {
+          method: "POST",
+          body: JSON.stringify({
+            space_code: spaceCode,
+            title: payload.title,
+            description: payload.description || null,
+            category: payload.category,
+            tags: payload.tags,
+            due_date: payload.dueDate || null,
+            due_time: payload.reminderTime || null,
+            completed: false,
+          }),
+        });
+      }
+
+      await refreshTasks();
+      closeForm();
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? error.message : "保存失败");
+    }
   };
 
-  const handleToggleTask = (id: string, completed: boolean) => {
-    updateTask(id, { completed: !completed });
-    refreshTasks();
+  const handleToggleTask = async (id: string, completed: boolean) => {
+    if (!canSync) {
+      updateTask(id, { completed: !completed });
+      await refreshTasks();
+      return;
+    }
+
+    try {
+      await remoteRequest(`tasks?id=eq.${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ completed: !completed, updated_at: new Date().toISOString() }),
+      });
+      await refreshTasks();
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? error.message : "更新失败");
+    }
   };
 
-  const handleDeleteTask = (id: string) => {
-    deleteTask(id);
-    refreshTasks();
+  const handleDeleteTask = async (id: string) => {
+    if (!canSync) {
+      deleteTask(id);
+      await refreshTasks();
+      return;
+    }
+
+    try {
+      await remoteRequest(`tasks?id=eq.${id}`, { method: "DELETE" });
+      await refreshTasks();
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? error.message : "删除失败");
+    }
   };
 
-  const handleDeleteEditingTask = () => {
+  const handleDeleteEditingTask = async () => {
     if (!editingTaskId) return;
-    handleDeleteTask(editingTaskId);
+    await handleDeleteTask(editingTaskId);
     closeForm();
   };
 
@@ -254,6 +433,33 @@ export default function Home() {
             </div>
           </div>
         </header>
+
+        <section className="mb-4 rounded-[26px] border border-white/80 bg-white/70 p-3 shadow-[0_8px_24px_rgba(120,80,50,0.06)] backdrop-blur">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-black text-stone-800">同步空间</p>
+              <p className="text-xs font-bold text-stone-400">{syncMessage}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => refreshTasks()}
+              className="rounded-2xl bg-rose-50 px-3 py-2 text-xs font-black text-rose-500"
+            >
+              刷新
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={spaceDraft}
+              onChange={(event) => setSpaceDraft(event.target.value)}
+              placeholder="输入同步码，比如 MYTASK"
+              className="min-w-0 flex-1 rounded-2xl border border-rose-100 bg-white/80 px-3 py-2 text-[16px] font-bold text-stone-700 outline-none placeholder:text-stone-300"
+            />
+            <button type="button" onClick={saveSpaceCode} className="rounded-2xl bg-stone-900 px-4 py-2 text-sm font-black text-white">
+              保存
+            </button>
+          </div>
+        </section>
 
         <section className="mb-4 rounded-[28px] border border-white/80 bg-white/75 p-4 shadow-[0_8px_24px_rgba(120,80,50,0.07)] backdrop-blur">
           <div className="mb-3 flex items-center justify-between gap-3">
