@@ -157,9 +157,10 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_20%_0%,#fed7aa_0,#fff7ed_28%,#fdf2f8_62%,#ede9fe_100%)] text-stone-800">
-      <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col px-4 pb-24 pt-4">
-        <header className="relative mb-5 overflow-hidden rounded-[32px] border border-white/80 bg-white/75 p-5 shadow-[0_18px_60px_rgba(251,146,60,0.22)] backdrop-blur-xl">
+    <div className="fixed inset-0 overflow-hidden overscroll-none bg-[radial-gradient(circle_at_20%_0%,#fed7aa_0,#fff7ed_28%,#fdf2f8_62%,#ede9fe_100%)] text-stone-800 [touch-action:pan-y]">
+      <div className="mx-auto h-[100dvh] min-h-[100svh] w-full max-w-[430px] overflow-hidden">
+        <div className="flex h-full w-full flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom))] pt-[calc(0.9rem+env(safe-area-inset-top))]">
+        <header className="relative mb-4 overflow-hidden rounded-[30px] border border-white/80 bg-white/80 p-5 shadow-[0_18px_60px_rgba(251,146,60,0.20)] backdrop-blur-xl">
           <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-rose-200/70" />
           <div className="absolute -bottom-12 left-8 h-28 w-28 rounded-full bg-amber-200/70" />
           <div className="relative flex items-start justify-between gap-4">
@@ -182,18 +183,18 @@ export default function Home() {
           </div>
         </header>
 
-        <section className="mb-5 grid grid-cols-4 gap-2">
-          {[
-            { label: "全部", value: stats.total, tone: "bg-rose-100 text-rose-600" },
-            { label: "完成", value: stats.completed, tone: "bg-emerald-100 text-emerald-600" },
-            { label: "今天", value: stats.today, tone: "bg-amber-100 text-amber-700" },
-            { label: "逾期", value: stats.overdue, tone: "bg-violet-100 text-violet-600" },
-          ].map((stat) => (
-            <div key={stat.label} className="rounded-3xl border border-white/80 bg-white/70 p-3 text-center shadow-[0_12px_35px_rgba(120,80,50,0.10)] backdrop-blur">
-              <div className={`mx-auto mb-1 grid h-10 w-10 place-items-center rounded-2xl text-lg font-black ${stat.tone}`}>{stat.value}</div>
-              <div className="text-xs font-bold text-stone-500">{stat.label}</div>
+        <section className="mb-4 rounded-[28px] border border-white/80 bg-white/75 p-3 shadow-[0_12px_35px_rgba(120,80,50,0.10)] backdrop-blur">
+          <div className="flex items-center gap-3">
+            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-3xl bg-rose-100 text-2xl font-black text-rose-600">{stats.total}</div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-black text-stone-800">全部任务</p>
+              <p className="mt-0.5 text-xs font-bold text-stone-400">今天 {stats.today} · 逾期 {stats.overdue}</p>
             </div>
-          ))}
+            <div className="rounded-2xl bg-emerald-100 px-3 py-2 text-center">
+              <p className="text-lg font-black text-emerald-600">{stats.completed}</p>
+              <p className="text-[11px] font-black text-stone-500">完成</p>
+            </div>
+          </div>
         </section>
 
         <label className="mb-4 flex min-h-14 w-full items-center gap-3 rounded-[24px] border border-white/80 bg-white/80 px-4 shadow-[0_12px_35px_rgba(120,80,50,0.10)] backdrop-blur">
@@ -207,18 +208,18 @@ export default function Home() {
           />
         </label>
 
-        <nav className="mb-5 flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <nav className="mb-4 grid grid-cols-5 gap-2">
           {(["all", "today", "upcoming", "overdue", "completed"] as FilterType[]).map((item) => (
             <button
               key={item}
               onClick={() => setFilter(item)}
-              className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-black transition ${
+              className={`inline-flex min-h-10 items-center justify-center gap-1 rounded-full px-2 text-xs font-black transition ${
                 filter === item
                   ? "bg-stone-900 text-white shadow-[0_10px_28px_rgba(39,39,42,0.22)]"
                   : "border border-white/80 bg-white/70 text-stone-500"
               }`}
             >
-              <PawPrint className="h-4 w-4" />
+              <PawPrint className="h-3.5 w-3.5" />
               {filterLabels[item]}
             </button>
           ))}
@@ -227,10 +228,10 @@ export default function Home() {
         {categories.length > 0 && (
           <section className="mb-5">
             <p className="mb-2 px-1 text-xs font-black uppercase tracking-wider text-stone-400">分类</p>
-            <div className="flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="grid grid-cols-4 gap-2">
               <button
                 onClick={() => setSelectedCategory(null)}
-                className={`shrink-0 rounded-full px-4 py-2 text-sm font-black ${
+                className={`min-h-10 rounded-full px-3 text-sm font-black ${
                   selectedCategory === null ? "bg-rose-400 text-white" : "border border-white/80 bg-white/70 text-stone-500"
                 }`}
               >
@@ -240,14 +241,14 @@ export default function Home() {
                 <button
                   key={category.id}
                   onClick={() => setSelectedCategory(selectedCategory === category.id ? null : category.id)}
-                  className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/80 bg-white/70 px-4 py-2 text-sm font-black text-stone-500"
+                  className="inline-flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-full border border-white/80 bg-white/70 px-2 text-sm font-black text-stone-500"
                   style={{
                     color: selectedCategory === category.id ? category.color : undefined,
                     boxShadow: selectedCategory === category.id ? `inset 0 0 0 2px ${category.color}55` : undefined,
                   }}
                 >
-                  <Folder className="h-4 w-4" />
-                  {category.name}
+                  <Folder className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{category.name}</span>
                 </button>
               ))}
             </div>
@@ -257,7 +258,7 @@ export default function Home() {
         {allTags.length > 0 && (
           <section className="mb-5">
             <p className="mb-2 px-1 text-xs font-black uppercase tracking-wider text-stone-400">标签</p>
-            <div className="flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex flex-wrap gap-2 pb-1">
               {allTags.map((tag) => (
                 <button
                   key={tag}
@@ -328,7 +329,7 @@ export default function Home() {
                     </div>
                   </button>
 
-                  <button onClick={() => handleDeleteTask(task.id)} className="shrink-0 rounded-2xl bg-rose-50 p-2 text-rose-300 transition hover:bg-rose-100 hover:text-rose-500" aria-label="删除任务">
+                  <button onClick={() => handleDeleteTask(task.id)} className="shrink-0 self-stretch rounded-3xl bg-rose-50 px-3 text-rose-300 transition hover:bg-rose-100 hover:text-rose-500" aria-label="删除任务">
                     <Trash2 className="h-5 w-5" />
                   </button>
                 </div>
@@ -347,7 +348,7 @@ export default function Home() {
 
         {showForm && (
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-950/30 px-3 backdrop-blur-sm">
-            <div className="max-h-[90vh] w-full max-w-[430px] overflow-y-auto rounded-t-[34px] border border-white/80 bg-[#fffaf3] p-5 pb-8 shadow-[0_-22px_70px_rgba(120,80,50,0.20)]">
+            <div className="max-h-[92dvh] w-full max-w-[430px] overflow-y-auto overflow-x-hidden overscroll-contain rounded-t-[34px] border border-white/80 bg-[#fffaf3] p-5 pb-[calc(2rem+env(safe-area-inset-bottom))] shadow-[0_-22px_70px_rgba(120,80,50,0.20)]">
               <div className="mb-5 flex items-center justify-between">
                 <div>
                   <p className="text-sm font-black text-rose-400">{editingTaskId ? "修改猫咪任务" : "新任务进猫窝"}</p>
@@ -439,6 +440,7 @@ export default function Home() {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
