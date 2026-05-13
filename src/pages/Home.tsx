@@ -49,6 +49,8 @@ const getTaskDueTime = (task: Task) => {
   return new Date(`${task.dueDate}T${time}`).getTime();
 };
 
+const formatDueTime = (time?: string) => (time ? time.slice(0, 5) : "");
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 const canSync = Boolean(supabaseUrl && supabaseAnonKey);
@@ -796,23 +798,27 @@ export default function Home() {
                       >
                         {categories.find((category) => category.id === normalizeCategoryId(task.category))?.name}
                       </span>
+                      {(task.dueDate || task.reminderTime) && (
+                        <span className="inline-flex shrink-0 items-center gap-1.5">
+                          {task.dueDate && (
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-black ${isOverdue(task.dueDate) && !task.completed ? "bg-rose-100 text-rose-500" : "bg-sky-100 text-sky-500"}`}>
+                              <Calendar className="h-3 w-3" strokeWidth={iconStroke} />
+                              {formatDate(task.dueDate)}
+                            </span>
+                          )}
+                          {task.reminderTime && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-black text-amber-600">
+                              <Clock className="h-3 w-3" strokeWidth={iconStroke} />
+                              {formatDueTime(task.reminderTime)}
+                            </span>
+                          )}
+                        </span>
+                      )}
                       {task.tags.map((tag) => (
                         <span key={tag} className="rounded-full bg-violet-100 px-2.5 py-0.5 text-[11px] font-black text-violet-500">
                           #{tag}
                         </span>
                       ))}
-                      {task.dueDate && (
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-black ${isOverdue(task.dueDate) && !task.completed ? "bg-rose-100 text-rose-500" : "bg-sky-100 text-sky-500"}`}>
-                          <Calendar className="h-3 w-3" strokeWidth={iconStroke} />
-                          {formatDate(task.dueDate)}
-                        </span>
-                      )}
-                      {task.reminderTime && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-black text-amber-600">
-                          <Clock className="h-3 w-3" strokeWidth={iconStroke} />
-                          {task.reminderTime}
-                        </span>
-                      )}
                     </div>
                   </button>
 
@@ -901,23 +907,27 @@ export default function Home() {
                   >
                     {categories.find((category) => category.id === normalizeCategoryId(viewingTask.category))?.name}
                   </span>
+                  {(viewingTask.dueDate || viewingTask.reminderTime) && (
+                    <span className="inline-flex shrink-0 items-center gap-2">
+                      {viewingTask.dueDate && (
+                        <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black ${isOverdue(viewingTask.dueDate) && !viewingTask.completed ? "bg-rose-100 text-rose-500" : "bg-sky-100 text-sky-500"}`}>
+                          <Calendar className="h-3 w-3" strokeWidth={iconStroke} />
+                          {formatDate(viewingTask.dueDate)}
+                        </span>
+                      )}
+                      {viewingTask.reminderTime && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-600">
+                          <Clock className="h-3 w-3" strokeWidth={iconStroke} />
+                          {formatDueTime(viewingTask.reminderTime)}
+                        </span>
+                      )}
+                    </span>
+                  )}
                   {viewingTask.tags.map((tag) => (
                     <span key={tag} className="rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-500">
                       #{tag}
                     </span>
                   ))}
-                  {viewingTask.dueDate && (
-                    <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black ${isOverdue(viewingTask.dueDate) && !viewingTask.completed ? "bg-rose-100 text-rose-500" : "bg-sky-100 text-sky-500"}`}>
-                      <Calendar className="h-3 w-3" strokeWidth={iconStroke} />
-                      {formatDate(viewingTask.dueDate)}
-                    </span>
-                  )}
-                  {viewingTask.reminderTime && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-600">
-                      <Clock className="h-3 w-3" strokeWidth={iconStroke} />
-                      {viewingTask.reminderTime}
-                    </span>
-                  )}
                 </div>
 
                 <div className="rounded-[26px] bg-white/70 px-3.5 py-4">
