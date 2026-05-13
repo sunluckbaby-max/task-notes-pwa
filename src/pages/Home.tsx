@@ -153,6 +153,7 @@ export default function Home() {
     total: tasks.length,
     completed: tasks.filter((task) => task.completed).length,
     today: tasks.filter((task) => task.dueDate && isToday(task.dueDate) && !task.completed).length,
+    upcoming: tasks.filter((task) => task.dueDate && !task.completed && !isToday(task.dueDate) && !isOverdue(task.dueDate)).length,
     overdue: tasks.filter((task) => task.dueDate && isOverdue(task.dueDate) && !task.completed).length,
   };
 
@@ -188,7 +189,7 @@ export default function Home() {
             <div className="grid h-14 w-14 shrink-0 place-items-center rounded-3xl bg-rose-100 text-2xl font-black text-rose-600">{stats.total}</div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-black text-stone-800">全部任务</p>
-              <p className="mt-0.5 text-xs font-bold text-stone-400">今天 {stats.today} · 逾期 {stats.overdue}</p>
+              <p className="mt-0.5 text-xs font-bold text-stone-400">今天 {stats.today} · 即将 {stats.upcoming} · 逾期 {stats.overdue}</p>
             </div>
             <div className="rounded-2xl bg-emerald-100 px-3 py-2 text-center">
               <p className="text-lg font-black text-emerald-600">{stats.completed}</p>
