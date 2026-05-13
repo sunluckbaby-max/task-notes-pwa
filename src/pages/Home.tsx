@@ -178,35 +178,76 @@ export default function Home() {
     upcoming: tasks.filter((task) => task.dueDate && !task.completed && !isToday(task.dueDate) && !isOverdue(task.dueDate)).length,
     overdue: tasks.filter((task) => task.dueDate && isOverdue(task.dueDate) && !task.completed).length,
   };
+  const iconStroke = 2.35;
 
   return (
-    <div className="fixed inset-0 overflow-hidden overscroll-none bg-[radial-gradient(circle_at_20%_0%,#fed7aa_0,#fff7ed_28%,#fdf2f8_62%,#ede9fe_100%)] text-stone-800 [touch-action:pan-y]">
+    <div className="fixed inset-0 overflow-hidden overscroll-none bg-[radial-gradient(circle_at_12%_0%,#fde8c8_0,#fff7ed_30%,#fff1f3_68%,#fffaf5_100%)] text-stone-800 [touch-action:pan-y]">
+      <style>{`
+        @keyframes catFloat {
+          0%, 100% { transform: translate3d(0, 0, 0) rotate(-0.4deg); }
+          50% { transform: translate3d(0, 6px, 0) rotate(0.5deg); }
+        }
+
+        @keyframes softGlow {
+          0%, 100% { opacity: 0.42; transform: scale(0.98); }
+          50% { opacity: 0.68; transform: scale(1.04); }
+        }
+
+        @keyframes headerDrift {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+
+        .cat-float {
+          animation: catFloat 5.8s ease-in-out infinite;
+          will-change: transform;
+        }
+
+        .cat-soft-glow {
+          animation: softGlow 4.8s ease-in-out infinite;
+          will-change: transform, opacity;
+        }
+
+        .header-soft-drift {
+          background-image: linear-gradient(120deg, rgba(255,255,255,.84), rgba(255,250,243,.9), rgba(255,241,243,.76));
+          background-size: 180% 180%;
+          animation: headerDrift 12s ease-in-out infinite;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .cat-float,
+          .cat-soft-glow,
+          .header-soft-drift {
+            animation: none;
+          }
+        }
+      `}</style>
       <div className="mx-auto h-[100dvh] min-h-[100svh] w-full max-w-[430px] overflow-hidden">
         <div className="flex h-full w-full flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom))] pt-[calc(0.9rem+env(safe-area-inset-top))]">
-        <header className="relative mb-4 overflow-hidden rounded-[30px] border border-white/80 bg-white/80 p-5 shadow-[0_18px_60px_rgba(251,146,60,0.20)] backdrop-blur-xl">
+        <header className="header-soft-drift relative mb-4 overflow-hidden rounded-[30px] border border-white/80 bg-white/80 p-5 shadow-[0_12px_34px_rgba(120,80,50,0.10)] backdrop-blur-xl">
           <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-rose-200/70" />
           <div className="absolute -bottom-12 left-8 h-28 w-28 rounded-full bg-amber-200/70" />
           <div className="relative flex items-start justify-between gap-4">
             <div className="min-w-0">
               <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-500">
-                <Sparkles className="h-3.5 w-3.5" />
+                <Sparkles className="h-3.5 w-3.5" strokeWidth={iconStroke} />
                 猫咪任务小窝
               </div>
               <h1 className="text-3xl font-black tracking-normal text-stone-900">任务记事本</h1>
               <p className="mt-2 text-sm font-medium text-stone-500">让小猫陪你整理每日任务</p>
             </div>
-            <div className="relative -mr-5 -mt-2 h-36 w-36 shrink-0">
-              <div className="absolute inset-x-5 bottom-2 h-10 rounded-full bg-rose-200/45 blur-xl" />
+            <div className="cat-float relative -mr-5 -mt-2 h-36 w-36 shrink-0">
+              <div className="cat-soft-glow absolute inset-x-5 bottom-2 h-10 rounded-full bg-rose-200/40 blur-xl" />
               <img
                 src="/cat-cutout.png"
                 alt="我的猫咪"
-                className="relative h-full w-full object-contain drop-shadow-[0_18px_26px_rgba(120,80,50,0.28)]"
+                className="relative h-full w-full object-contain drop-shadow-[0_12px_18px_rgba(120,80,50,0.18)]"
               />
             </div>
           </div>
         </header>
 
-        <section className="mb-4 rounded-[28px] border border-white/80 bg-white/75 p-3 shadow-[0_12px_35px_rgba(120,80,50,0.10)] backdrop-blur">
+        <section className="mb-4 rounded-[28px] border border-white/80 bg-white/75 p-3 shadow-[0_8px_24px_rgba(120,80,50,0.07)] backdrop-blur">
           <div className="flex items-center gap-3">
             <div className="grid h-14 w-14 shrink-0 place-items-center rounded-3xl bg-rose-100 text-2xl font-black text-rose-600">{stats.total}</div>
             <div className="min-w-0 flex-1">
@@ -220,8 +261,8 @@ export default function Home() {
           </div>
         </section>
 
-        <label className="mb-4 flex min-h-14 w-full items-center gap-3 rounded-[24px] border border-white/80 bg-white/80 px-4 shadow-[0_12px_35px_rgba(120,80,50,0.10)] backdrop-blur">
-          <Search className="h-5 w-5 text-rose-300" />
+        <label className="mb-4 flex min-h-14 w-full items-center gap-3 rounded-[24px] border border-white/80 bg-white/80 px-4 shadow-[0_8px_24px_rgba(120,80,50,0.06)] backdrop-blur">
+          <Search className="h-5 w-5 text-rose-300" strokeWidth={iconStroke} />
           <input
             type="text"
             placeholder="搜索猫窝里的任务..."
@@ -238,11 +279,11 @@ export default function Home() {
               onClick={() => setFilter(item)}
               className={`inline-flex min-h-10 items-center justify-center gap-1 rounded-full px-2 text-xs font-black transition ${
                 filter === item
-                  ? "bg-stone-900 text-white shadow-[0_10px_28px_rgba(39,39,42,0.22)]"
+                  ? "bg-stone-900 text-white shadow-[0_8px_20px_rgba(39,39,42,0.16)]"
                   : "border border-white/80 bg-white/70 text-stone-500"
               }`}
             >
-              <PawPrint className="h-3.5 w-3.5" />
+              <PawPrint className="h-3.5 w-3.5" strokeWidth={iconStroke} />
               {filterLabels[item]}
             </button>
           ))}
@@ -270,7 +311,7 @@ export default function Home() {
                     boxShadow: selectedCategory === category.id ? `inset 0 0 0 2px ${category.color}55` : undefined,
                   }}
                 >
-                  <Folder className="h-4 w-4 shrink-0" />
+                  <Folder className="h-4 w-4 shrink-0" strokeWidth={iconStroke} />
                   <span className="truncate">{category.name}</span>
                 </button>
               ))}
@@ -290,7 +331,7 @@ export default function Home() {
                     selectedTag === tag ? "bg-violet-400 text-white" : "border border-white/80 bg-white/70 text-stone-500"
                   }`}
                 >
-                  <Tag className="h-3.5 w-3.5" />
+                  <Tag className="h-3.5 w-3.5" strokeWidth={iconStroke} />
                   {tag}
                 </button>
               ))}
@@ -309,20 +350,20 @@ export default function Home() {
             </div>
           ) : (
             filteredTasks.map((task) => (
-              <article key={task.id} className="rounded-[28px] border border-white/80 bg-white/80 p-4 shadow-[0_14px_42px_rgba(120,80,50,0.12)] backdrop-blur">
+              <article key={task.id} className="rounded-[28px] border border-white/80 bg-white/80 p-4 shadow-[0_8px_24px_rgba(120,80,50,0.07)] backdrop-blur">
                 <div className="flex gap-3">
                   <button
                     onClick={() => handleToggleTask(task.id, task.completed)}
                     className="mt-1 shrink-0 text-rose-300 transition hover:text-rose-500"
                     aria-label={task.completed ? "标记为未完成" : "标记为完成"}
                   >
-                    {task.completed ? <CheckCircle2 className="h-7 w-7 text-emerald-400" /> : <Circle className="h-7 w-7" />}
+                    {task.completed ? <CheckCircle2 className="h-7 w-7 text-emerald-400" strokeWidth={iconStroke} /> : <Circle className="h-7 w-7" strokeWidth={iconStroke} />}
                   </button>
 
                   <button type="button" onClick={() => openEditTaskForm(task)} className="min-w-0 flex-1 text-left" aria-label="编辑任务">
                     <div className="mb-2 flex items-start justify-between gap-2">
                       <h3 className={`text-base font-black ${task.completed ? "text-stone-400 line-through" : "text-stone-900"}`}>{task.title}</h3>
-                      <Pencil className="h-4 w-4 shrink-0 text-rose-300" />
+                      <Pencil className="h-4 w-4 shrink-0 text-rose-300" strokeWidth={iconStroke} />
                     </div>
                     {task.description && <p className="mb-3 text-sm font-medium leading-6 text-stone-500">{task.description}</p>}
                     <div className="flex flex-wrap items-center gap-2">
@@ -339,21 +380,21 @@ export default function Home() {
                       ))}
                       {task.dueDate && (
                         <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black ${isOverdue(task.dueDate) && !task.completed ? "bg-rose-100 text-rose-500" : "bg-sky-100 text-sky-500"}`}>
-                          <Calendar className="h-3 w-3" />
+                          <Calendar className="h-3 w-3" strokeWidth={iconStroke} />
                           {formatDate(task.dueDate)}
                         </span>
                       )}
                       {task.reminderTime && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-600">
-                          <Clock className="h-3 w-3" />
+                          <Clock className="h-3 w-3" strokeWidth={iconStroke} />
                           {task.reminderTime}
                         </span>
                       )}
                     </div>
                   </button>
 
-                  <button onClick={() => handleDeleteTask(task.id)} className="shrink-0 self-stretch rounded-3xl bg-rose-50 px-3 text-rose-300 transition hover:bg-rose-100 hover:text-rose-500" aria-label="删除任务">
-                    <Trash2 className="h-5 w-5" />
+                  <button onClick={() => handleDeleteTask(task.id)} className="mt-1 grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-rose-50/80 text-rose-300 transition hover:bg-rose-100 hover:text-rose-500" aria-label="删除任务">
+                    <Trash2 className="h-5 w-5" strokeWidth={iconStroke} />
                   </button>
                 </div>
               </article>
@@ -363,10 +404,10 @@ export default function Home() {
 
         <button
           onClick={openNewTaskForm}
-          className="fixed bottom-7 right-[max(1.25rem,calc((100vw-430px)/2+1.25rem))] grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-rose-400 to-amber-300 text-white shadow-[0_16px_36px_rgba(251,113,133,0.38)] transition active:scale-95"
+          className="fixed bottom-7 right-[max(1.25rem,calc((100vw-430px)/2+1.25rem))] grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-rose-400 to-amber-300 text-white shadow-[0_12px_26px_rgba(251,113,133,0.24)] transition active:scale-95"
           aria-label="新建任务"
         >
-          <Plus className="h-8 w-8" />
+          <Plus className="h-8 w-8" strokeWidth={iconStroke} />
         </button>
 
         {showForm && (
