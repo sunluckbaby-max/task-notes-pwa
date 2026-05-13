@@ -593,7 +593,7 @@ export default function Home() {
             <div className="inline-flex min-w-0 items-center gap-2">
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-rose-100 text-lg">🐾</span>
               <div className="min-w-0">
-                <p className="text-sm font-black text-stone-800">今日任务状态</p>
+                <p className="text-sm font-black text-stone-800">任务状态</p>
                 <p className="mt-0.5 text-xs font-bold text-stone-400">{summaryHint}</p>
               </div>
             </div>
