@@ -414,7 +414,7 @@ export default function Home() {
                       className="w-full rounded-2xl border border-rose-100 bg-white px-4 py-3 text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-300 focus:ring-2 focus:ring-rose-200"
                     />
                   </FieldLabel>
-                  <FieldLabel label="提醒时间">
+                  <FieldLabel label="截止时间">
                     <input
                       type="time"
                       value={formData.reminderTime}
