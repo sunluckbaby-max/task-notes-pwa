@@ -7,7 +7,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Calendar, CheckCircle2, Circle, Clock, Folder, PawPrint, Pencil, Plus, Search, Sparkles, Tag, Trash2, X } from "lucide-react";
+import { Calendar, CheckCircle2, Circle, Clock, Eye, EyeOff, Folder, Lock, PawPrint, Pencil, Plus, Search, Sparkles, Tag, Trash2, X } from "lucide-react";
 import { getTasks, addTask, updateTask, deleteTask, getCategories } from "@/lib/storage";
 import type { Task } from "@/lib/storage";
 import { formatDate, isToday, isOverdue } from "@/lib/utils";
@@ -59,6 +59,12 @@ type TaskRow = {
   updated_at: string;
 };
 
+type TaskSpaceRow = {
+  id: string;
+  code: string;
+  password_hash: string;
+};
+
 const toTask = (row: TaskRow): Task => ({
   id: row.id,
   title: row.title,
@@ -95,6 +101,15 @@ const remoteRequest = async (path: string, options: RequestInit = {}) => {
   return response.json();
 };
 
+const hashPassword = async (code: string, password: string) => {
+  const input = `${code.trim()}::${password}`;
+  const bytes = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+};
+
 export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories] = useState(() => normalizeCategories(getCategories()));
@@ -111,6 +126,9 @@ export default function Home() {
   const [formData, setFormData] = useState(emptyFormData);
   const [spaceCode, setSpaceCode] = useState(() => localStorage.getItem(SPACE_CODE_KEY) || DEFAULT_SPACE_CODE);
   const [spaceDraft, setSpaceDraft] = useState(() => localStorage.getItem(SPACE_CODE_KEY) || DEFAULT_SPACE_CODE);
+  const [spacePassword, setSpacePassword] = useState("");
+  const [showSpacePassword, setShowSpacePassword] = useState(false);
+  const [spaceUnlocked, setSpaceUnlocked] = useState(!canSync);
   const [syncMessage, setSyncMessage] = useState(canSync ? "云端同步已开启" : "本地模式：请检查 Vercel 环境变量");
 
   useEffect(() => {
@@ -171,6 +189,8 @@ export default function Home() {
   };
 
   useEffect(() => {
+    if (!spaceUnlocked) return undefined;
+
     refreshTasks(spaceCode);
     if (!canSync) return undefined;
 
@@ -179,7 +199,7 @@ export default function Home() {
     }, 12000);
 
     return () => window.clearInterval(timer);
-  }, [spaceCode]);
+  }, [spaceCode, spaceUnlocked]);
 
   const resetForm = () => {
     setFormData(emptyFormData);
@@ -227,13 +247,57 @@ export default function Home() {
         task.description.toLowerCase().includes(searchText.toLowerCase())
     );
 
-  const saveSpaceCode = () => {
-    const nextCode = spaceDraft.trim() || DEFAULT_SPACE_CODE;
-    localStorage.setItem(SPACE_CODE_KEY, nextCode);
-    setSpaceCode(nextCode);
-    setSelectedCategory(null);
-    setSelectedTag(null);
-    setSearchText("");
+  const enterSpace = async () => {
+    const nextCode = spaceDraft.trim();
+    const nextPassword = spacePassword.trim();
+
+    if (!nextCode || !nextPassword) {
+      setSyncMessage("请输入同步码和密码");
+      return;
+    }
+
+    if (!canSync) {
+      setSpaceCode(nextCode);
+      setSpaceUnlocked(true);
+      setSyncMessage("本地模式：请检查 Vercel 环境变量");
+      return;
+    }
+
+    try {
+      const passwordHash = await hashPassword(nextCode, nextPassword);
+      const existing = (await remoteRequest(`task_spaces?select=*&code=eq.${encodeURIComponent(nextCode)}&limit=1`, {
+        method: "GET",
+      })) as TaskSpaceRow[];
+
+      if (existing?.length) {
+        if (existing[0].password_hash !== passwordHash) {
+          setSyncMessage("同步空间密码不对");
+          return;
+        }
+      } else {
+        await remoteRequest("task_spaces", {
+          method: "POST",
+          body: JSON.stringify({ code: nextCode, password_hash: passwordHash }),
+        });
+      }
+
+      localStorage.setItem(SPACE_CODE_KEY, nextCode);
+      setSpaceCode(nextCode);
+      setSpaceUnlocked(true);
+      setSelectedCategory(null);
+      setSelectedTag(null);
+      setSearchText("");
+      setSyncMessage(`已进入同步空间：${nextCode}`);
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? error.message : "进入同步空间失败");
+    }
+  };
+
+  const leaveSpace = () => {
+    setSpaceUnlocked(false);
+    setTasks([]);
+    setSpacePassword("");
+    setSyncMessage("请输入同步码和密码");
   };
 
   const handleSaveTask = async () => {
@@ -367,6 +431,78 @@ export default function Home() {
         : `还有 ${remainingTasks} 件小事，慢慢来也没关系 ✨`;
   const iconStroke = 2.35;
 
+  if (!spaceUnlocked) {
+    return (
+      <div className="fixed inset-0 overflow-hidden overscroll-none bg-[radial-gradient(circle_at_12%_0%,#fde8c8_0,#fff7ed_34%,#fff1f3_72%,#fffaf5_100%)] text-stone-800 [touch-action:pan-y]">
+        <div className="mx-auto flex h-[100dvh] min-h-[100svh] w-full max-w-[430px] flex-col justify-center overflow-hidden px-4 py-[calc(1rem+env(safe-area-inset-top))]">
+          <section className="relative overflow-hidden rounded-[34px] border border-white/80 bg-white/80 p-6 shadow-[0_12px_34px_rgba(120,80,50,0.10)] backdrop-blur-xl">
+            <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-rose-200/70" />
+            <div className="absolute -bottom-12 left-8 h-28 w-28 rounded-full bg-amber-200/70" />
+            <div className="relative">
+              <div className="mb-5 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-500">
+                    <Lock className="h-3.5 w-3.5" strokeWidth={iconStroke} />
+                    同步空间登录
+                  </div>
+                  <h1 className="text-3xl font-black text-stone-900">任务记事本</h1>
+                  <p className="mt-2 text-sm font-bold leading-6 text-stone-500">输入同一个同步码和密码，电脑与手机就会进入同一个猫咪任务空间。</p>
+                </div>
+                <img
+                  src="/cat-cutout.png"
+                  alt="我的猫咪"
+                  className="h-28 w-28 shrink-0 object-contain drop-shadow-[0_12px_18px_rgba(120,80,50,0.18)]"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="grid gap-2 text-sm font-black text-stone-600">
+                  <span>同步码</span>
+                  <input
+                    value={spaceDraft}
+                    onChange={(event) => setSpaceDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") enterSpace();
+                    }}
+                    placeholder="比如 MYTASK2026"
+                    className="w-full rounded-2xl border border-rose-100 bg-white px-4 py-3 text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-300 focus:ring-2 focus:ring-rose-200"
+                  />
+                </label>
+
+                <label className="grid gap-2 text-sm font-black text-stone-600">
+                  <span>空间密码</span>
+                  <div className="flex items-center rounded-2xl border border-rose-100 bg-white px-4 focus-within:ring-2 focus-within:ring-rose-200">
+                    <input
+                      type={showSpacePassword ? "text" : "password"}
+                      value={spacePassword}
+                      onChange={(event) => setSpacePassword(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") enterSpace();
+                      }}
+                      placeholder="输入只有你知道的密码"
+                      className="min-w-0 flex-1 bg-transparent py-3 text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-300"
+                    />
+                    <button type="button" onClick={() => setShowSpacePassword((current) => !current)} className="grid h-10 w-10 place-items-center text-stone-400">
+                      {showSpacePassword ? <EyeOff className="h-5 w-5" strokeWidth={iconStroke} /> : <Eye className="h-5 w-5" strokeWidth={iconStroke} />}
+                    </button>
+                  </div>
+                </label>
+
+                <button type="button" onClick={enterSpace} className="mt-2 w-full rounded-2xl bg-stone-900 px-4 py-3 font-black text-white shadow-[0_10px_24px_rgba(39,39,42,0.16)]">
+                  进入任务空间
+                </button>
+              </div>
+
+              <p className="mt-4 rounded-2xl bg-rose-50 px-3 py-2 text-xs font-bold leading-5 text-stone-500">
+                {syncMessage || "首次输入会自动创建同步空间。请把同步码和密码截图保存，忘记后无法找回。"}
+              </p>
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 overflow-hidden overscroll-none bg-[radial-gradient(circle_at_12%_0%,#fde8c8_0,#fff7ed_30%,#fff1f3_68%,#fffaf5_100%)] text-stone-800 [touch-action:pan-y]">
       <style>{`
@@ -422,6 +558,9 @@ export default function Home() {
               </div>
               <h1 className="text-3xl font-black tracking-normal text-stone-900">任务记事本</h1>
               <p className="mt-2 text-sm font-medium text-stone-500">让小猫陪你整理每日任务</p>
+              <button type="button" onClick={leaveSpace} className="mt-3 rounded-full bg-white/70 px-3 py-1 text-xs font-black text-rose-400">
+                切换同步空间
+              </button>
             </div>
             <div className="cat-float relative -mr-5 -mt-2 h-36 w-36 shrink-0">
               <div className="cat-soft-glow absolute inset-x-5 bottom-2 h-10 rounded-full bg-rose-200/40 blur-xl" />
@@ -433,33 +572,6 @@ export default function Home() {
             </div>
           </div>
         </header>
-
-        <section className="mb-4 rounded-[26px] border border-white/80 bg-white/70 p-3 shadow-[0_8px_24px_rgba(120,80,50,0.06)] backdrop-blur">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-black text-stone-800">同步空间</p>
-              <p className="text-xs font-bold text-stone-400">{syncMessage}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => refreshTasks()}
-              className="rounded-2xl bg-rose-50 px-3 py-2 text-xs font-black text-rose-500"
-            >
-              刷新
-            </button>
-          </div>
-          <div className="flex gap-2">
-            <input
-              value={spaceDraft}
-              onChange={(event) => setSpaceDraft(event.target.value)}
-              placeholder="输入同步码，比如 MYTASK"
-              className="min-w-0 flex-1 rounded-2xl border border-rose-100 bg-white/80 px-3 py-2 text-[16px] font-bold text-stone-700 outline-none placeholder:text-stone-300"
-            />
-            <button type="button" onClick={saveSpaceCode} className="rounded-2xl bg-stone-900 px-4 py-2 text-sm font-black text-white">
-              保存
-            </button>
-          </div>
-        </section>
 
         <section className="mb-4 rounded-[28px] border border-white/80 bg-white/75 p-4 shadow-[0_8px_24px_rgba(120,80,50,0.07)] backdrop-blur">
           <div className="mb-3 flex items-center justify-between gap-3">
