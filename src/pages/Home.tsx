@@ -31,9 +31,16 @@ const filterLabels: Record<FilterType, string> = {
   completed: "完成",
 };
 
+const normalizeCategoryId = (categoryId: string) => (categoryId === "shopping" ? "personal" : categoryId);
+
+const normalizeCategories = (categories: ReturnType<typeof getCategories>) =>
+  categories
+    .filter((category) => category.id !== "shopping")
+    .map((category) => (category.id === "personal" ? { ...category, name: "生活" } : category));
+
 export default function Home() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [categories] = useState(getCategories());
+  const [categories] = useState(() => normalizeCategories(getCategories()));
   const allTags = useMemo(
     () => Array.from(new Set(tasks.flatMap((task) => task.tags))).sort((a, b) => a.localeCompare(b, "zh-CN")),
     [tasks]
@@ -67,7 +74,7 @@ export default function Home() {
     setFormData({
       title: task.title,
       description: task.description,
-      category: task.category,
+      category: normalizeCategoryId(task.category),
       tags: task.tags.join(", "),
       dueDate: task.dueDate || "",
       reminderTime: task.reminderTime || "",
@@ -89,7 +96,7 @@ export default function Home() {
       if (!task.completed) return true;
       return false;
     })
-    .filter((task) => !selectedCategory || task.category === selectedCategory)
+    .filter((task) => !selectedCategory || normalizeCategoryId(task.category) === selectedCategory)
     .filter((task) => !selectedTag || task.tags.includes(selectedTag))
     .filter(
       (task) =>
@@ -145,7 +152,7 @@ export default function Home() {
   };
 
   const getCategoryColor = (categoryId: string) => {
-    const cat = categories.find((category) => category.id === categoryId);
+    const cat = categories.find((category) => category.id === normalizeCategoryId(categoryId));
     return cat?.color || "#FB7185";
   };
 
@@ -308,7 +315,7 @@ export default function Home() {
                         className="rounded-full px-3 py-1 text-xs font-black text-white"
                         style={{ backgroundColor: getCategoryColor(task.category) }}
                       >
-                        {categories.find((category) => category.id === task.category)?.name}
+                        {categories.find((category) => category.id === normalizeCategoryId(task.category))?.name}
                       </span>
                       {task.tags.map((tag) => (
                         <span key={tag} className="rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-500">
