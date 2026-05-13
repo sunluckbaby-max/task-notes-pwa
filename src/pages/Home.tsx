@@ -195,7 +195,7 @@ export default function Home() {
               <h1 className="text-3xl font-black tracking-normal text-stone-900">任务记事本</h1>
               <p className="mt-2 text-sm font-medium text-stone-500">让小猫陪你整理每日任务</p>
             </div>
-            <div className="relative -mr-5 -mt-5 h-36 w-36 shrink-0">
+            <div className="relative -mr-5 -mt-2 h-36 w-36 shrink-0">
               <div className="absolute inset-x-5 bottom-2 h-10 rounded-full bg-rose-200/45 blur-xl" />
               <img
                 src="/cat-cutout.png"
