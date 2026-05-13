@@ -520,7 +520,7 @@ export default function Home() {
                     同步空间登录
                   </div>
                   <h1 className="text-3xl font-black tracking-normal text-stone-900">任务记事本</h1>
-                  <p className="mt-2 text-sm font-bold leading-6 text-stone-500">输入同一个同步码和密码，电脑与手机就会进入同一个猫咪任务空间。</p>
+                  <p className="mt-2 text-sm font-bold leading-6 text-stone-500">输入同一个同步码和密码，就会进入同一个猫咪任务空间。</p>
                 </div>
                 <img
                   src="/cat-cutout.png"
