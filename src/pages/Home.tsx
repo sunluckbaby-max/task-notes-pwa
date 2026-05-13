@@ -137,6 +137,7 @@ export default function Home() {
   const [searchText, setSearchText] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [viewingTaskId, setViewingTaskId] = useState<string | null>(null);
   const [formData, setFormData] = useState(emptyFormData);
   const [spaceCode, setSpaceCode] = useState(() => savedAuth?.code || localStorage.getItem(SPACE_CODE_KEY) || DEFAULT_SPACE_CODE);
   const [spaceDraft, setSpaceDraft] = useState(() => savedAuth?.code || localStorage.getItem(SPACE_CODE_KEY) || DEFAULT_SPACE_CODE);
@@ -242,6 +243,8 @@ export default function Home() {
     setShowForm(false);
     resetForm();
   };
+
+  const viewingTask = viewingTaskId ? tasks.find((task) => task.id === viewingTaskId) || null : null;
 
   const filteredTasks = tasks
     .filter((task) => {
@@ -553,6 +556,21 @@ export default function Home() {
           animation: headerDrift 12s ease-in-out infinite;
         }
 
+        .task-title-clamp,
+        .task-description-clamp {
+          display: -webkit-box;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .task-title-clamp {
+          -webkit-line-clamp: 2;
+        }
+
+        .task-description-clamp {
+          -webkit-line-clamp: 2;
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .cat-float,
           .cat-soft-glow,
@@ -713,12 +731,11 @@ export default function Home() {
                     {task.completed ? <CheckCircle2 className="h-7 w-7 text-emerald-400" strokeWidth={iconStroke} /> : <Circle className="h-7 w-7" strokeWidth={iconStroke} />}
                   </button>
 
-                  <button type="button" onClick={() => openEditTaskForm(task)} className="min-w-0 flex-1 text-left" aria-label="编辑任务">
+                  <button type="button" onClick={() => setViewingTaskId(task.id)} className="min-w-0 flex-1 text-left" aria-label="查看任务详情">
                     <div className="mb-2 flex items-start justify-between gap-2">
-                      <h3 className={`text-base font-black ${task.completed ? "text-stone-400 line-through" : "text-stone-900"}`}>{task.title}</h3>
-                      <Pencil className="h-4 w-4 shrink-0 text-rose-300" strokeWidth={iconStroke} />
+                      <h3 className={`task-title-clamp text-base font-black leading-6 ${task.completed ? "text-stone-400 line-through" : "text-stone-900"}`}>{task.title}</h3>
                     </div>
-                    {task.description && <p className="mb-3 text-sm font-medium leading-6 text-stone-500">{task.description}</p>}
+                    {task.description && <p className="task-description-clamp mb-3 text-sm font-medium leading-6 text-stone-500">{task.description}</p>}
                     <div className="flex flex-wrap items-center gap-2">
                       <span
                         className="rounded-full px-3 py-1 text-xs font-black text-white"
@@ -746,6 +763,14 @@ export default function Home() {
                     </div>
                   </button>
 
+                  <button
+                    onClick={() => openEditTaskForm(task)}
+                    className="mt-1 grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/80 text-rose-300 transition hover:bg-rose-50 hover:text-rose-500"
+                    aria-label="编辑任务"
+                  >
+                    <Pencil className="h-5 w-5" strokeWidth={iconStroke} />
+                  </button>
+
                   <button onClick={() => handleDeleteTask(task.id)} className="mt-1 grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-rose-50/80 text-rose-300 transition hover:bg-rose-100 hover:text-rose-500" aria-label="删除任务">
                     <Trash2 className="h-5 w-5" strokeWidth={iconStroke} />
                   </button>
@@ -762,6 +787,89 @@ export default function Home() {
         >
           <Plus className="h-8 w-8" strokeWidth={iconStroke} />
         </button>
+
+        {viewingTask && (
+          <div className="fixed inset-0 z-40 flex items-end justify-center bg-[#fff7ed]/70 px-3 backdrop-blur-md">
+            <article className="max-h-[92dvh] w-full max-w-[430px] overflow-y-auto overflow-x-hidden rounded-t-[34px] border border-white/80 bg-[#fffdf8] p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] shadow-[0_-14px_34px_rgba(120,80,50,0.12)]">
+              <div className="mb-6 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setViewingTaskId(null)}
+                  className="rounded-2xl bg-rose-50 px-4 py-2 text-sm font-black text-rose-500"
+                >
+                  返回
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      openEditTaskForm(viewingTask);
+                      setViewingTaskId(null);
+                    }}
+                    className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-rose-400 shadow-sm"
+                    aria-label="编辑任务"
+                  >
+                    <Pencil className="h-5 w-5" strokeWidth={iconStroke} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await handleDeleteTask(viewingTask.id);
+                      setViewingTaskId(null);
+                    }}
+                    className="grid h-10 w-10 place-items-center rounded-2xl bg-rose-50 text-rose-400"
+                    aria-label="删除任务"
+                  >
+                    <Trash2 className="h-5 w-5" strokeWidth={iconStroke} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-5">
+                <div>
+                  <p className="mb-2 text-xs font-black uppercase tracking-wider text-rose-300">Task Note</p>
+                  <h2 className={`break-words text-3xl font-black leading-tight ${viewingTask.completed ? "text-stone-400 line-through" : "text-stone-900"}`}>
+                    {viewingTask.title}
+                  </h2>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className="rounded-full px-3 py-1 text-xs font-black text-white"
+                    style={{ backgroundColor: getCategoryColor(viewingTask.category) }}
+                  >
+                    {categories.find((category) => category.id === normalizeCategoryId(viewingTask.category))?.name}
+                  </span>
+                  {viewingTask.tags.map((tag) => (
+                    <span key={tag} className="rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-500">
+                      #{tag}
+                    </span>
+                  ))}
+                  {viewingTask.dueDate && (
+                    <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black ${isOverdue(viewingTask.dueDate) && !viewingTask.completed ? "bg-rose-100 text-rose-500" : "bg-sky-100 text-sky-500"}`}>
+                      <Calendar className="h-3 w-3" strokeWidth={iconStroke} />
+                      {formatDate(viewingTask.dueDate)}
+                    </span>
+                  )}
+                  {viewingTask.reminderTime && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-600">
+                      <Clock className="h-3 w-3" strokeWidth={iconStroke} />
+                      {viewingTask.reminderTime}
+                    </span>
+                  )}
+                </div>
+
+                <div className="rounded-[28px] bg-white/70 p-5">
+                  {viewingTask.description ? (
+                    <p className="whitespace-pre-wrap break-words text-[16px] font-medium leading-8 text-stone-600">{viewingTask.description}</p>
+                  ) : (
+                    <p className="text-[16px] font-bold text-stone-300">这里还没有写描述。</p>
+                  )}
+                </div>
+              </div>
+            </article>
+          </div>
+        )}
 
         {showForm && (
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-950/30 px-3 backdrop-blur-sm">
