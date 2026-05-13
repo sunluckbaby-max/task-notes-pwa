@@ -25,6 +25,7 @@ const emptyFormData = {
 
 const DEFAULT_SPACE_CODE = "CAT-TASKS";
 const SPACE_CODE_KEY = "cat_task_space_code";
+const SPACE_AUTH_KEY = "cat_task_space_auth";
 const MIGRATED_SPACE_KEY_PREFIX = "cat_task_migrated_";
 
 const filterLabels: Record<FilterType, string> = {
@@ -110,7 +111,20 @@ const hashPassword = async (code: string, password: string) => {
     .join("");
 };
 
+const loadSavedSpaceAuth = () => {
+  try {
+    const saved = localStorage.getItem(SPACE_AUTH_KEY);
+    if (!saved) return null;
+    const parsed = JSON.parse(saved) as { code?: string; passwordHash?: string };
+    if (!parsed.code || !parsed.passwordHash) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
 export default function Home() {
+  const savedAuth = loadSavedSpaceAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories] = useState(() => normalizeCategories(getCategories()));
   const allTags = useMemo(
@@ -124,11 +138,11 @@ export default function Home() {
   const [showForm, setShowForm] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [formData, setFormData] = useState(emptyFormData);
-  const [spaceCode, setSpaceCode] = useState(() => localStorage.getItem(SPACE_CODE_KEY) || DEFAULT_SPACE_CODE);
-  const [spaceDraft, setSpaceDraft] = useState(() => localStorage.getItem(SPACE_CODE_KEY) || DEFAULT_SPACE_CODE);
+  const [spaceCode, setSpaceCode] = useState(() => savedAuth?.code || localStorage.getItem(SPACE_CODE_KEY) || DEFAULT_SPACE_CODE);
+  const [spaceDraft, setSpaceDraft] = useState(() => savedAuth?.code || localStorage.getItem(SPACE_CODE_KEY) || DEFAULT_SPACE_CODE);
   const [spacePassword, setSpacePassword] = useState("");
   const [showSpacePassword, setShowSpacePassword] = useState(false);
-  const [spaceUnlocked, setSpaceUnlocked] = useState(!canSync);
+  const [spaceUnlocked, setSpaceUnlocked] = useState(!canSync || Boolean(savedAuth));
   const [syncMessage, setSyncMessage] = useState(canSync ? "云端同步已开启" : "本地模式：请检查 Vercel 环境变量");
 
   useEffect(() => {
@@ -282,6 +296,7 @@ export default function Home() {
       }
 
       localStorage.setItem(SPACE_CODE_KEY, nextCode);
+      localStorage.setItem(SPACE_AUTH_KEY, JSON.stringify({ code: nextCode, passwordHash }));
       setSpaceCode(nextCode);
       setSpaceUnlocked(true);
       setSelectedCategory(null);
@@ -294,6 +309,7 @@ export default function Home() {
   };
 
   const leaveSpace = () => {
+    localStorage.removeItem(SPACE_AUTH_KEY);
     setSpaceUnlocked(false);
     setTasks([]);
     setSpacePassword("");
@@ -445,7 +461,7 @@ export default function Home() {
                     <Lock className="h-3.5 w-3.5" strokeWidth={iconStroke} />
                     同步空间登录
                   </div>
-                  <h1 className="text-3xl font-black text-stone-900">任务记事本</h1>
+                  <h1 className="text-3xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-rose-500 via-pink-400 to-amber-400 drop-shadow-[0_6px_14px_rgba(251,113,133,0.16)]">任务记事本</h1>
                   <p className="mt-2 text-sm font-bold leading-6 text-stone-500">输入同一个同步码和密码，电脑与手机就会进入同一个猫咪任务空间。</p>
                 </div>
                 <img
@@ -556,7 +572,7 @@ export default function Home() {
                 <Sparkles className="h-3.5 w-3.5" strokeWidth={iconStroke} />
                 猫咪任务小窝
               </div>
-              <h1 className="text-3xl font-black tracking-normal text-stone-900">任务记事本</h1>
+              <h1 className="text-3xl font-black tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-rose-500 via-pink-400 to-amber-400 drop-shadow-[0_6px_14px_rgba(251,113,133,0.16)]">任务记事本</h1>
               <p className="mt-2 text-sm font-medium text-stone-500">让小猫陪你整理每日任务</p>
               <button type="button" onClick={leaveSpace} className="mt-3 rounded-full bg-white/70 px-3 py-1 text-xs font-black text-rose-400">
                 切换同步空间
