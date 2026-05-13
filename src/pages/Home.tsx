@@ -138,6 +138,8 @@ export default function Home() {
   const [showForm, setShowForm] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [viewingTaskId, setViewingTaskId] = useState<string | null>(null);
+  const [detailEditing, setDetailEditing] = useState(false);
+  const [detailDraft, setDetailDraft] = useState({ title: "", description: "" });
   const [formData, setFormData] = useState(emptyFormData);
   const [spaceCode, setSpaceCode] = useState(() => savedAuth?.code || localStorage.getItem(SPACE_CODE_KEY) || DEFAULT_SPACE_CODE);
   const [spaceDraft, setSpaceDraft] = useState(() => savedAuth?.code || localStorage.getItem(SPACE_CODE_KEY) || DEFAULT_SPACE_CODE);
@@ -245,6 +247,16 @@ export default function Home() {
   };
 
   const viewingTask = viewingTaskId ? tasks.find((task) => task.id === viewingTaskId) || null : null;
+
+  useEffect(() => {
+    if (!viewingTask) {
+      setDetailEditing(false);
+      setDetailDraft({ title: "", description: "" });
+      return;
+    }
+
+    setDetailDraft({ title: viewingTask.title, description: viewingTask.description || "" });
+  }, [viewingTask?.id]);
 
   const filteredTasks = tasks
     .filter((task) => {
@@ -419,6 +431,35 @@ export default function Home() {
       await refreshTasks();
     } catch (error) {
       setSyncMessage(error instanceof Error ? error.message : "删除失败");
+    }
+  };
+
+  const handleSaveDetail = async () => {
+    if (!viewingTask || !detailDraft.title.trim()) return;
+
+    const title = detailDraft.title.trim();
+    const description = detailDraft.description;
+
+    if (!canSync) {
+      updateTask(viewingTask.id, { title, description });
+      await refreshTasks();
+      setDetailEditing(false);
+      return;
+    }
+
+    try {
+      await remoteRequest(`tasks?id=eq.${viewingTask.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          title,
+          description: description || null,
+          updated_at: new Date().toISOString(),
+        }),
+      });
+      await refreshTasks();
+      setDetailEditing(false);
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? error.message : "保存详情失败");
     }
   };
 
@@ -803,8 +844,8 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => {
-                      openEditTaskForm(viewingTask);
-                      setViewingTaskId(null);
+                      setDetailDraft({ title: viewingTask.title, description: viewingTask.description || "" });
+                      setDetailEditing(true);
                     }}
                     className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-rose-400 shadow-sm"
                     aria-label="编辑任务"
@@ -828,9 +869,17 @@ export default function Home() {
               <div className="space-y-5">
                 <div>
                   <p className="mb-2 text-xs font-black uppercase tracking-wider text-rose-300">Task Note</p>
-                  <h2 className={`break-words text-3xl font-black leading-tight ${viewingTask.completed ? "text-stone-400 line-through" : "text-stone-900"}`}>
-                    {viewingTask.title}
-                  </h2>
+                  {detailEditing ? (
+                    <input
+                      value={detailDraft.title}
+                      onChange={(event) => setDetailDraft((current) => ({ ...current, title: event.target.value }))}
+                      className="w-full rounded-3xl border border-rose-100 bg-white/80 px-4 py-3 text-[24px] font-black leading-tight text-stone-900 outline-none focus:ring-2 focus:ring-rose-200"
+                    />
+                  ) : (
+                    <h2 className={`break-words text-3xl font-black leading-tight ${viewingTask.completed ? "text-stone-400 line-through" : "text-stone-900"}`}>
+                      {viewingTask.title}
+                    </h2>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -860,12 +909,41 @@ export default function Home() {
                 </div>
 
                 <div className="rounded-[28px] bg-white/70 p-5">
-                  {viewingTask.description ? (
+                  {detailEditing ? (
+                    <textarea
+                      value={detailDraft.description}
+                      onChange={(event) => setDetailDraft((current) => ({ ...current, description: event.target.value }))}
+                      placeholder="写一点备注，小猫会帮你记住"
+                      className="min-h-[280px] w-full resize-none bg-transparent text-[16px] font-medium leading-8 text-stone-600 outline-none placeholder:text-stone-300"
+                    />
+                  ) : viewingTask.description ? (
                     <p className="whitespace-pre-wrap break-words text-[16px] font-medium leading-8 text-stone-600">{viewingTask.description}</p>
                   ) : (
                     <p className="text-[16px] font-bold text-stone-300">这里还没有写描述。</p>
                   )}
                 </div>
+
+                {detailEditing && (
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDetailDraft({ title: viewingTask.title, description: viewingTask.description || "" });
+                        setDetailEditing(false);
+                      }}
+                      className="flex-1 rounded-2xl bg-white px-4 py-3 font-black text-stone-500 shadow-sm"
+                    >
+                      取消
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveDetail}
+                      className="flex-1 rounded-2xl bg-stone-900 px-4 py-3 font-black text-white shadow-[0_10px_24px_rgba(39,39,42,0.16)]"
+                    >
+                      保存
+                    </button>
+                  </div>
+                )}
               </div>
             </article>
           </div>
