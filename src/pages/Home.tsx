@@ -43,6 +43,12 @@ const normalizeCategories = (categories: ReturnType<typeof getCategories>) =>
     .filter((category) => category.id !== "shopping")
     .map((category) => (category.id === "personal" ? { ...category, name: "生活" } : category));
 
+const getTaskDueTime = (task: Task) => {
+  if (!task.dueDate) return Number.POSITIVE_INFINITY;
+  const time = task.reminderTime || "23:59";
+  return new Date(`${task.dueDate}T${time}`).getTime();
+};
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 const canSync = Boolean(supabaseUrl && supabaseAnonKey);
@@ -275,6 +281,12 @@ export default function Home() {
         task.title.toLowerCase().includes(searchText.toLowerCase()) ||
         task.description.toLowerCase().includes(searchText.toLowerCase())
     );
+  const sortedTasks = [...filteredTasks].sort((first, second) => {
+    if (first.completed !== second.completed) return first.completed ? 1 : -1;
+    const dueDiff = getTaskDueTime(first) - getTaskDueTime(second);
+    if (dueDiff !== 0) return dueDiff;
+    return new Date(second.updatedAt || 0).getTime() - new Date(first.updatedAt || 0).getTime();
+  });
 
   const enterSpace = async () => {
     const nextCode = spaceDraft.trim();
@@ -761,42 +773,42 @@ export default function Home() {
               </div>
             </div>
           ) : (
-            filteredTasks.map((task) => (
-              <article key={task.id} className="rounded-[28px] border border-white/80 bg-white/80 p-4 shadow-[0_8px_24px_rgba(120,80,50,0.07)] backdrop-blur">
-                <div className="flex gap-3">
+            sortedTasks.map((task) => (
+              <article key={task.id} className="rounded-[24px] border border-white/80 bg-white/80 p-3 shadow-[0_7px_20px_rgba(120,80,50,0.06)] backdrop-blur">
+                <div className="flex gap-2.5">
                   <button
                     onClick={() => handleToggleTask(task.id, task.completed)}
                     className="mt-1 shrink-0 text-rose-300 transition hover:text-rose-500"
                     aria-label={task.completed ? "标记为未完成" : "标记为完成"}
                   >
-                    {task.completed ? <CheckCircle2 className="h-7 w-7 text-emerald-400" strokeWidth={iconStroke} /> : <Circle className="h-7 w-7" strokeWidth={iconStroke} />}
+                    {task.completed ? <CheckCircle2 className="h-6 w-6 text-emerald-400" strokeWidth={iconStroke} /> : <Circle className="h-6 w-6" strokeWidth={iconStroke} />}
                   </button>
 
                   <button type="button" onClick={() => setViewingTaskId(task.id)} className="min-w-0 flex-1 text-left" aria-label="查看任务详情">
                     <div className="mb-2 flex items-start justify-between gap-2">
-                      <h3 className={`task-title-clamp text-base font-black leading-6 ${task.completed ? "text-stone-400 line-through" : "text-stone-900"}`}>{task.title}</h3>
+                      <h3 className={`task-title-clamp text-[15px] font-black leading-5 ${task.completed ? "text-stone-400 line-through" : "text-stone-900"}`}>{task.title}</h3>
                     </div>
-                    {task.description && <p className="task-description-clamp mb-3 text-sm font-medium leading-6 text-stone-500">{task.description}</p>}
-                    <div className="flex flex-wrap items-center gap-2">
+                    {task.description && <p className="task-description-clamp mb-2 text-xs font-medium leading-5 text-stone-500">{task.description}</p>}
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <span
-                        className="rounded-full px-3 py-1 text-xs font-black text-white"
+                        className="rounded-full px-2.5 py-0.5 text-[11px] font-black text-white"
                         style={{ backgroundColor: getCategoryColor(task.category) }}
                       >
                         {categories.find((category) => category.id === normalizeCategoryId(task.category))?.name}
                       </span>
                       {task.tags.map((tag) => (
-                        <span key={tag} className="rounded-full bg-violet-100 px-3 py-1 text-xs font-black text-violet-500">
+                        <span key={tag} className="rounded-full bg-violet-100 px-2.5 py-0.5 text-[11px] font-black text-violet-500">
                           #{tag}
                         </span>
                       ))}
                       {task.dueDate && (
-                        <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black ${isOverdue(task.dueDate) && !task.completed ? "bg-rose-100 text-rose-500" : "bg-sky-100 text-sky-500"}`}>
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-black ${isOverdue(task.dueDate) && !task.completed ? "bg-rose-100 text-rose-500" : "bg-sky-100 text-sky-500"}`}>
                           <Calendar className="h-3 w-3" strokeWidth={iconStroke} />
                           {formatDate(task.dueDate)}
                         </span>
                       )}
                       {task.reminderTime && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-black text-amber-600">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-black text-amber-600">
                           <Clock className="h-3 w-3" strokeWidth={iconStroke} />
                           {task.reminderTime}
                         </span>
@@ -806,14 +818,14 @@ export default function Home() {
 
                   <button
                     onClick={() => openEditTaskForm(task)}
-                    className="mt-1 grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/80 text-rose-300 transition hover:bg-rose-50 hover:text-rose-500"
+                    className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-white/80 text-rose-300 transition hover:bg-rose-50 hover:text-rose-500"
                     aria-label="编辑任务"
                   >
-                    <Pencil className="h-5 w-5" strokeWidth={iconStroke} />
+                    <Pencil className="h-4 w-4" strokeWidth={iconStroke} />
                   </button>
 
-                  <button onClick={() => handleDeleteTask(task.id)} className="mt-1 grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-rose-50/80 text-rose-300 transition hover:bg-rose-100 hover:text-rose-500" aria-label="删除任务">
-                    <Trash2 className="h-5 w-5" strokeWidth={iconStroke} />
+                  <button onClick={() => handleDeleteTask(task.id)} className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-rose-50/80 text-rose-300 transition hover:bg-rose-100 hover:text-rose-500" aria-label="删除任务">
+                    <Trash2 className="h-4 w-4" strokeWidth={iconStroke} />
                   </button>
                 </div>
               </article>
