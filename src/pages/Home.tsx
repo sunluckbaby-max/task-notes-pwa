@@ -37,6 +37,7 @@ const SPACE_CODE_KEY = "cat_task_space_code";
 const SPACE_AUTH_KEY = "cat_task_space_auth";
 const MIGRATED_SPACE_KEY_PREFIX = "cat_task_migrated_";
 const LOCAL_NOTES_KEY_PREFIX = "cat_notes_";
+const PENDING_NOTES_KEY_PREFIX = "cat_notes_pending_";
 
 const noteCategories: Array<{ id: NoteCategory; name: string; color: string; tint: string }> = [
   { id: "tech", name: "科技", color: "#38BDF8", tint: "bg-sky-100 text-sky-500" },
@@ -148,6 +149,22 @@ const getLocalNotes = (spaceCode: string): CatNote[] => {
 
 const saveLocalNotes = (spaceCode: string, notes: CatNote[]) => {
   localStorage.setItem(getLocalNotesKey(spaceCode), JSON.stringify(notes));
+};
+
+const getPendingNotesKey = (spaceCode: string) => `${PENDING_NOTES_KEY_PREFIX}${spaceCode}`;
+
+const getPendingNotes = (spaceCode: string): CatNote[] => {
+  try {
+    const saved = localStorage.getItem(getPendingNotesKey(spaceCode));
+    if (!saved) return [];
+    return JSON.parse(saved) as CatNote[];
+  } catch {
+    return [];
+  }
+};
+
+const savePendingNotes = (spaceCode: string, notes: CatNote[]) => {
+  localStorage.setItem(getPendingNotesKey(spaceCode), JSON.stringify(notes));
 };
 
 const createId = () => {
@@ -311,14 +328,14 @@ export default function Home() {
       const query = `cat_notes?select=*&space_code=eq.${encodeURIComponent(targetSpaceCode)}&order=updated_at.desc`;
       const data = (await remoteRequest(query, { method: "GET" })) as NoteRow[];
       const remoteNotes = (data || []).map(toNote);
-      const localNotes = getLocalNotes(targetSpaceCode);
+      const localNotes = getPendingNotes(targetSpaceCode);
       const mergedNotes = [
         ...localNotes.filter((localNote) => !remoteNotes.some((remoteNote) => remoteNote.id === localNote.id)),
         ...remoteNotes,
       ].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
       setNotes(mergedNotes);
     } catch {
-      setNotes(getLocalNotes(targetSpaceCode));
+      setNotes(getPendingNotes(targetSpaceCode));
     }
   };
 
@@ -675,7 +692,11 @@ export default function Home() {
       setNotes(optimisticNotes);
       closeNoteForm();
       setSyncMessage(canSync ? "笔记已先保存，正在同步云端" : "笔记已保存到本机");
-      trySaveLocalNotes(spaceCode, optimisticNotes);
+      if (canSync) {
+        savePendingNotes(spaceCode, editingNoteId ? getPendingNotes(spaceCode).filter((note) => note.id !== editingNoteId) : [optimisticNote, ...getPendingNotes(spaceCode)]);
+      } else {
+        trySaveLocalNotes(spaceCode, optimisticNotes);
+      }
 
       if (!canSync) return;
 
@@ -706,8 +727,7 @@ export default function Home() {
           const remoteNote = created?.[0] ? toNote(created[0]) : null;
           if (remoteNote) {
             setNotes((current) => current.map((note) => (note.id === localId ? remoteNote : note)));
-            const localWithoutTemp = getLocalNotes(spaceCode).filter((note) => note.id !== localId);
-            trySaveLocalNotes(spaceCode, localWithoutTemp);
+            savePendingNotes(spaceCode, getPendingNotes(spaceCode).filter((note) => note.id !== localId));
           }
         }
 
@@ -728,13 +748,14 @@ export default function Home() {
       return;
     }
 
+    const nextPendingNotes = getPendingNotes(spaceCode).filter((note) => note.id !== id);
+    savePendingNotes(spaceCode, nextPendingNotes);
+    setNotes((current) => current.filter((note) => note.id !== id));
+
     try {
       await remoteRequest(`cat_notes?id=eq.${id}`, { method: "DELETE" });
       await refreshNotes();
     } catch (error) {
-      const nextNotes = getLocalNotes(spaceCode).filter((note) => note.id !== id);
-      saveLocalNotes(spaceCode, nextNotes);
-      setNotes(nextNotes);
       setSyncMessage(error instanceof Error ? `删除本地笔记：${error.message}` : "删除本地笔记");
     }
   };
@@ -772,7 +793,7 @@ export default function Home() {
           updated_at: new Date().toISOString(),
         }),
       });
-      await refreshNotes();
+      setNotes((current) => current.map((note) => (note.id === viewingNote.id ? { ...note, ...payload, updatedAt: new Date().toISOString() } : note)));
       setNoteDetailEditing(false);
     } catch (error) {
       setSyncMessage(error instanceof Error ? `保存笔记失败：${error.message}` : "保存笔记失败");
