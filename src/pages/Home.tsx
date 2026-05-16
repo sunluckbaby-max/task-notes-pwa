@@ -150,6 +150,15 @@ const saveLocalNotes = (spaceCode: string, notes: CatNote[]) => {
   localStorage.setItem(getLocalNotesKey(spaceCode), JSON.stringify(notes));
 };
 
+const trySaveLocalNotes = (spaceCode: string, notes: CatNote[]) => {
+  try {
+    saveLocalNotes(spaceCode, notes);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const parseNotePhotos = (photo: string) => {
   if (!photo) return [];
   try {
@@ -170,7 +179,7 @@ const resizePhotoFile = (file: File) =>
       const image = document.createElement("img");
       image.onerror = () => reject(new Error("照片处理失败"));
       image.onload = () => {
-        const maxSize = 1200;
+        const maxSize = 900;
         const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
         const width = Math.max(1, Math.round(image.width * scale));
         const height = Math.max(1, Math.round(image.height * scale));
@@ -183,7 +192,7 @@ const resizePhotoFile = (file: File) =>
           return;
         }
         context.drawImage(image, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", 0.72));
+        resolve(canvas.toDataURL("image/jpeg", 0.62));
       };
       image.src = String(reader.result || "");
     };
@@ -676,7 +685,10 @@ export default function Home() {
       const nextNotes = editingNoteId
         ? currentNotes.map((note) => (note.id === editingNoteId ? { ...note, ...payload, updatedAt: now } : note))
         : [{ id: crypto.randomUUID(), ...payload, createdAt: now, updatedAt: now }, ...currentNotes];
-      saveLocalNotes(spaceCode, nextNotes);
+      if (!trySaveLocalNotes(spaceCode, nextNotes)) {
+        setSyncMessage("笔记保存失败：本地空间已满，请先删除旧大图笔记，或确认 Supabase 笔记表已创建。");
+        return;
+      }
       setNotes(nextNotes);
       closeNoteForm();
       return;
@@ -715,7 +727,10 @@ export default function Home() {
       const nextNotes = editingNoteId
         ? currentNotes.map((note) => (note.id === editingNoteId ? { ...note, ...payload, updatedAt: now } : note))
         : [{ id: crypto.randomUUID(), ...payload, createdAt: now, updatedAt: now }, ...currentNotes];
-      saveLocalNotes(spaceCode, nextNotes);
+      if (!trySaveLocalNotes(spaceCode, nextNotes)) {
+        setSyncMessage(error instanceof Error ? `云端保存失败，本地空间也满了：${error.message}` : "云端保存失败，本地空间也满了");
+        return;
+      }
       setNotes(nextNotes);
       closeNoteForm();
       setSyncMessage(error instanceof Error ? `笔记暂存本地：${error.message}` : "笔记暂存本地");
@@ -754,7 +769,10 @@ export default function Home() {
     if (!canSync) {
       const now = new Date().toISOString();
       const nextNotes = getLocalNotes(spaceCode).map((note) => (note.id === viewingNote.id ? { ...note, ...payload, updatedAt: now } : note));
-      saveLocalNotes(spaceCode, nextNotes);
+      if (!trySaveLocalNotes(spaceCode, nextNotes)) {
+        setSyncMessage("笔记保存失败：本地空间已满，请先删除旧大图笔记，或确认 Supabase 笔记表已创建。");
+        return;
+      }
       setNotes(nextNotes);
       setNoteDetailEditing(false);
       return;
@@ -1721,6 +1739,7 @@ export default function Home() {
                 <div className="flex gap-3 pt-2">
                   {editingNoteId && (
                     <button
+                      type="button"
                       onClick={async () => {
                         await handleDeleteNote(editingNoteId);
                         closeNoteForm();
@@ -1730,10 +1749,10 @@ export default function Home() {
                       删除
                     </button>
                   )}
-                  <button onClick={closeNoteForm} className="flex-1 rounded-2xl bg-white px-4 py-3 font-black text-stone-500 shadow-sm">
+                  <button type="button" onClick={closeNoteForm} className="flex-1 rounded-2xl bg-white px-4 py-3 font-black text-stone-500 shadow-sm">
                     取消
                   </button>
-                  <button onClick={handleSaveNote} className="flex-1 rounded-2xl bg-stone-900 px-4 py-3 font-black text-white shadow-[0_10px_26px_rgba(39,39,42,0.22)]">
+                  <button type="button" onClick={handleSaveNote} className="flex-1 rounded-2xl bg-stone-900 px-4 py-3 font-black text-white shadow-[0_10px_26px_rgba(39,39,42,0.22)]">
                     {editingNoteId ? "保存修改" : "创建笔记"}
                   </button>
                 </div>
