@@ -1017,7 +1017,7 @@ export default function Home() {
                   <Sparkles className="h-4 w-4 shrink-0" strokeWidth={iconStroke} />
                   <span>{activeTab === "tasks" ? "猫咪任务小窝" : "猫咪笔记本"}</span>
                 </div>
-                <p className="min-w-0 flex-1 truncate text-[10px] font-bold leading-4 text-stone-500">{activeTab === "tasks" ? "整理每日任务" : "收好生活碎片"}</p>
+                <p className="min-w-0 flex-1 truncate text-[12px] font-bold leading-4 text-stone-500">{activeTab === "tasks" ? "整理每日任务" : "收好生活碎片"}</p>
               </div>
               <div className="mt-1 inline-flex max-w-full items-center gap-1.5 truncate rounded-full bg-white/60 px-2.5 py-0.5 text-[10px] font-bold text-stone-500 shadow-sm backdrop-blur-sm">
                 <Clock className="h-3 w-3 shrink-0 text-amber-500" strokeWidth={iconStroke} />
