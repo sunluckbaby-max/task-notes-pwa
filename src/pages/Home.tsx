@@ -1012,11 +1012,13 @@ export default function Home() {
           <div className="absolute -bottom-10 left-7 h-22 w-22 rounded-full bg-amber-200/70" />
           <div className="relative flex h-full items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="mb-1 inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-full bg-rose-100 px-2.5 py-1 text-[13px] font-black leading-none text-rose-500 shadow-[0_5px_12px_rgba(251,113,133,0.09)]">
-                <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={iconStroke} />
-                {activeTab === "tasks" ? "猫咪任务小窝" : "猫咪笔记本"}
+              <div className="mb-1 flex min-w-0 items-center gap-2">
+                <div className="inline-flex max-w-[48%] shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-rose-100 px-2.5 py-1 text-[13px] font-black leading-none text-rose-500 shadow-[0_5px_12px_rgba(251,113,133,0.09)]">
+                  <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={iconStroke} />
+                  <span className="truncate">{activeTab === "tasks" ? "猫咪任务小窝" : "猫咪笔记本"}</span>
+                </div>
+                <p className="min-w-0 flex-1 truncate text-[11px] font-bold leading-4 text-stone-500">{activeTab === "tasks" ? "让小猫陪你整理每日任务" : "把灵感和生活碎片轻轻收好"}</p>
               </div>
-              <p className="truncate text-[11px] font-bold leading-4 text-stone-500">{activeTab === "tasks" ? "让小猫陪你整理每日任务" : "把灵感和生活碎片轻轻收好"}</p>
               <div className="mt-1 inline-flex max-w-full items-center gap-1.5 truncate rounded-full bg-white/60 px-2.5 py-0.5 text-[10px] font-bold text-stone-500 shadow-sm backdrop-blur-sm">
                 <Clock className="h-3 w-3 shrink-0 text-amber-500" strokeWidth={iconStroke} />
                 <span className="truncate">{headerTimeText}</span>
@@ -1025,7 +1027,7 @@ export default function Home() {
                 切换同步空间
               </button>
             </div>
-            <div className="cat-float relative -mr-1 mt-2 h-[106px] w-[106px] shrink-0">
+            <div className="cat-float relative -mr-2 mt-1 h-[96px] w-[96px] shrink-0">
               <div className="cat-soft-glow absolute inset-x-5 bottom-2 h-10 rounded-full bg-rose-200/40 blur-xl" />
               <img
                 src="/cat-cutout.png"
