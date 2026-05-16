@@ -7,7 +7,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { BookOpen, Calendar, CheckCircle2, Circle, Clock, Eye, EyeOff, Folder, Image, Lock, PawPrint, Pencil, Plus, Search, Sparkles, Tag, Trash2, X } from "lucide-react";
+import { BookOpen, Calendar, CheckCircle2, Circle, Clock, Eye, EyeOff, Folder, Lock, PawPrint, Pencil, Plus, Search, Sparkles, Tag, Trash2, X } from "lucide-react";
 import { getTasks, addTask, updateTask, deleteTask, getCategories } from "@/lib/storage";
 import type { Task } from "@/lib/storage";
 import { formatDate, isToday, isOverdue } from "@/lib/utils";
@@ -165,46 +165,6 @@ const trySaveLocalNotes = (spaceCode: string, notes: CatNote[]) => {
     return false;
   }
 };
-
-const parseNotePhotos = (photo: string) => {
-  if (!photo) return [];
-  try {
-    const parsed = JSON.parse(photo);
-    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string" && item.length > 0) : [photo];
-  } catch {
-    return [photo];
-  }
-};
-
-const encodeNotePhotos = (photos: string[]) => JSON.stringify(photos.filter(Boolean).slice(0, 6));
-
-const resizePhotoFile = (file: File) =>
-  new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("照片读取失败"));
-    reader.onload = () => {
-      const image = document.createElement("img");
-      image.onerror = () => reject(new Error("照片处理失败"));
-      image.onload = () => {
-        const maxSize = 900;
-        const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
-        const width = Math.max(1, Math.round(image.width * scale));
-        const height = Math.max(1, Math.round(image.height * scale));
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext("2d");
-        if (!context) {
-          reject(new Error("照片处理失败"));
-          return;
-        }
-        context.drawImage(image, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", 0.62));
-      };
-      image.src = String(reader.result || "");
-    };
-    reader.readAsDataURL(file);
-  });
 
 const remoteRequest = async (path: string, options: RequestInit = {}) => {
   if (!supabaseUrl || !supabaseAnonKey) throw new Error("Supabase is not configured");
@@ -423,7 +383,7 @@ export default function Home() {
       title: note.title,
       body: note.body,
       category: note.category,
-      photo: note.photo,
+      photo: "",
     });
     setShowNoteForm(true);
   };
@@ -457,7 +417,7 @@ export default function Home() {
       title: viewingNote.title,
       body: viewingNote.body,
       category: viewingNote.category,
-      photo: viewingNote.photo,
+      photo: "",
     });
   }, [viewingNote?.id]);
 
@@ -695,7 +655,7 @@ export default function Home() {
         title: noteForm.title.trim(),
         body: noteForm.body,
         category: noteForm.category,
-        photo: noteForm.photo,
+        photo: "",
       };
 
       const now = new Date().toISOString();
@@ -709,17 +669,13 @@ export default function Home() {
         : { id: localId, ...payload, createdAt: now, updatedAt: now };
       const optimisticNotes = editingNoteId ? notes.map((note) => (note.id === editingNoteId ? optimisticNote : note)) : [optimisticNote, ...notes];
 
+      setActiveTab("notes");
+      setNoteCategoryFilter("all");
+      setSearchText("");
       setNotes(optimisticNotes);
       closeNoteForm();
       setSyncMessage(canSync ? "笔记已先保存，正在同步云端" : "笔记已保存到本机");
-      const savedToLocal = trySaveLocalNotes(spaceCode, optimisticNotes);
-      if (!savedToLocal) {
-        trySaveLocalNotes(
-          spaceCode,
-          optimisticNotes.map((note) => ({ ...note, photo: "" }))
-        );
-        setSyncMessage(canSync ? "笔记已先保存，照片较大，正在尝试同步云端" : "笔记已保存，照片较大未缓存到本机");
-      }
+      trySaveLocalNotes(spaceCode, optimisticNotes);
 
       if (!canSync) return;
 
@@ -736,7 +692,7 @@ export default function Home() {
             }),
           });
         } else {
-          await remoteRequest("cat_notes", {
+          const created = (await remoteRequest("cat_notes", {
             method: "POST",
             body: JSON.stringify({
               space_code: spaceCode,
@@ -745,10 +701,16 @@ export default function Home() {
               category: payload.category,
               photo: payload.photo || null,
             }),
-          });
+          })) as NoteRow[];
+
+          const remoteNote = created?.[0] ? toNote(created[0]) : null;
+          if (remoteNote) {
+            setNotes((current) => current.map((note) => (note.id === localId ? remoteNote : note)));
+            const localWithoutTemp = getLocalNotes(spaceCode).filter((note) => note.id !== localId);
+            trySaveLocalNotes(spaceCode, localWithoutTemp);
+          }
         }
 
-        await refreshNotes();
         setSyncMessage("笔记已保存");
       } catch (error) {
         setSyncMessage(error instanceof Error ? `笔记已保存在本机，云端同步失败：${error.message}` : "笔记已保存在本机，云端同步失败");
@@ -780,12 +742,12 @@ export default function Home() {
   const handleSaveNoteDetail = async () => {
     if (!viewingNote || !noteDetailDraft.title.trim()) return;
 
-    const payload = {
-      title: noteDetailDraft.title.trim(),
-      body: noteDetailDraft.body,
-      category: noteDetailDraft.category,
-      photo: noteDetailDraft.photo,
-    };
+      const payload = {
+        title: noteDetailDraft.title.trim(),
+        body: noteDetailDraft.body,
+        category: noteDetailDraft.category,
+        photo: "",
+      };
 
     if (!canSync) {
       const now = new Date().toISOString();
@@ -814,28 +776,6 @@ export default function Home() {
       setNoteDetailEditing(false);
     } catch (error) {
       setSyncMessage(error instanceof Error ? `保存笔记失败：${error.message}` : "保存笔记失败");
-    }
-  };
-
-  const handleNotePhotoChange = async (files?: FileList | null) => {
-    const selected = Array.from(files || []).filter((file) => file.type.startsWith("image/")).slice(0, 6);
-    if (selected.length === 0) return;
-    try {
-      const photos = await Promise.all(selected.map((file) => resizePhotoFile(file)));
-      setNoteForm((current) => ({ ...current, photo: encodeNotePhotos(photos) }));
-    } catch (error) {
-      setSyncMessage(error instanceof Error ? error.message : "照片上传失败");
-    }
-  };
-
-  const handleNoteDetailPhotoChange = async (files?: FileList | null) => {
-    const selected = Array.from(files || []).filter((file) => file.type.startsWith("image/")).slice(0, 6);
-    if (selected.length === 0) return;
-    try {
-      const photos = await Promise.all(selected.map((file) => resizePhotoFile(file)));
-      setNoteDetailDraft((current) => ({ ...current, photo: encodeNotePhotos(photos) }));
-    } catch (error) {
-      setSyncMessage(error instanceof Error ? error.message : "照片上传失败");
     }
   };
 
@@ -1019,7 +959,7 @@ export default function Home() {
         }
       `}</style>
       <div className="mx-auto h-[100dvh] min-h-[100svh] w-full max-w-[430px] overflow-hidden">
-        <div className="flex h-full w-full flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom))] pt-[calc(0.9rem+env(safe-area-inset-top))]">
+        <div className="flex h-full w-full flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 pb-[calc(10rem+env(safe-area-inset-bottom))] pt-[calc(0.9rem+env(safe-area-inset-top))]">
         <header className="header-soft-drift relative mb-4 overflow-hidden rounded-[30px] border border-white/80 bg-white/80 p-5 shadow-[0_12px_34px_rgba(120,80,50,0.10)] backdrop-blur-xl">
           <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-rose-200/70" />
           <div className="absolute -bottom-12 left-8 h-28 w-28 rounded-full bg-amber-200/70" />
@@ -1029,7 +969,7 @@ export default function Home() {
                 <Sparkles className="h-5 w-5" strokeWidth={iconStroke} />
                 {activeTab === "tasks" ? "猫咪任务小窝" : "猫咪笔记本"}
               </div>
-              <p className="mt-2 text-sm font-medium text-stone-500">{activeTab === "tasks" ? "让小猫陪你整理每日任务" : "把灵感、照片和生活碎片轻轻收好"}</p>
+              <p className="mt-2 text-sm font-medium text-stone-500">{activeTab === "tasks" ? "让小猫陪你整理每日任务" : "把灵感和生活碎片轻轻收好"}</p>
               <button type="button" onClick={leaveSpace} className="mt-3 rounded-full bg-white/70 px-3 py-1 text-xs font-black text-rose-400">
                 切换同步空间
               </button>
@@ -1232,7 +1172,7 @@ export default function Home() {
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-black text-stone-800">笔记小窝</p>
-                  <p className="mt-1 text-xs font-bold leading-5 text-stone-400">已经收好 {notes.length} 条笔记，照片和想法都可以慢慢整理。</p>
+                  <p className="mt-1 text-xs font-bold leading-5 text-stone-400">已经收好 {notes.length} 条笔记，想法都可以慢慢整理。</p>
                 </div>
                 <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-rose-100 text-rose-500">
                   <BookOpen className="h-6 w-6" strokeWidth={iconStroke} />
@@ -1277,34 +1217,21 @@ export default function Home() {
               ) : (
                 filteredNotes.map((note) => {
                   const category = noteCategories.find((item) => item.id === note.category) || noteCategories[3];
-                  const photos = parseNotePhotos(note.photo);
-                  const coverPhoto = photos[0] || "";
                   return (
-                    <article key={note.id} className="overflow-hidden rounded-[24px] border border-white/80 bg-white/80 shadow-[0_7px_20px_rgba(120,80,50,0.06)] backdrop-blur">
-                      {coverPhoto && (
-                        <button type="button" onClick={() => setViewingNoteId(note.id)} className="block h-36 w-full overflow-hidden">
-                          <img src={coverPhoto} alt={note.title} className="h-full w-full object-cover" />
-                        </button>
-                      )}
-                      <div className="flex gap-2.5 p-3">
+                    <article key={note.id} className="rounded-[24px] border border-white/80 bg-white/80 p-3 shadow-[0_7px_20px_rgba(120,80,50,0.06)] backdrop-blur">
+                      <div className="flex gap-2.5">
                         <button type="button" onClick={() => setViewingNoteId(note.id)} className="min-w-0 flex-1 text-left">
                           <h3 className="task-title-clamp text-[16px] font-black leading-5 text-stone-900">{note.title}</h3>
                           {note.body && <p className="task-description-clamp mt-2 text-xs font-medium leading-5 text-stone-500">{note.body}</p>}
                           <div className="mt-2 flex flex-wrap items-center gap-1.5">
                             <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-black ${category.tint}`}>{category.name}</span>
                             <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-black text-stone-400">{formatDate(note.updatedAt.slice(0, 10))}</span>
-                            {photos.length > 0 && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-[11px] font-black text-rose-500">
-                                <Image className="h-3 w-3" strokeWidth={iconStroke} />
-                                {photos.length} 张照片
-                              </span>
-                            )}
                           </div>
                         </button>
                         <button
                           onClick={() => {
                             setViewingNoteId(note.id);
-                            setNoteDetailDraft({ title: note.title, body: note.body, category: note.category, photo: note.photo });
+                            setNoteDetailDraft({ title: note.title, body: note.body, category: note.category, photo: "" });
                             setNoteDetailEditing(true);
                           }}
                           className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-white/80 text-rose-300 transition hover:bg-rose-50 hover:text-rose-500"
@@ -1326,7 +1253,7 @@ export default function Home() {
 
         <button
           onClick={activeTab === "tasks" ? openNewTaskForm : openNewNoteForm}
-          className="fixed bottom-[calc(4.9rem+env(safe-area-inset-bottom))] right-[max(1.25rem,calc((100vw-430px)/2+1.25rem))] grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-rose-400 to-amber-300 text-white shadow-[0_12px_26px_rgba(251,113,133,0.24)] transition active:scale-95"
+          className="fixed bottom-[calc(6.2rem+env(safe-area-inset-bottom))] right-[max(1.25rem,calc((100vw-430px)/2+1.25rem))] grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-rose-400 to-amber-300 text-white shadow-[0_12px_26px_rgba(251,113,133,0.24)] transition active:scale-95"
           aria-label={activeTab === "tasks" ? "新建任务" : "新建笔记"}
         >
           <Plus className="h-8 w-8" strokeWidth={iconStroke} />
@@ -1468,7 +1395,7 @@ export default function Home() {
                     <button
                       type="button"
                       onClick={() => {
-                        setNoteDetailDraft({ title: viewingNote.title, body: viewingNote.body, category: viewingNote.category, photo: viewingNote.photo });
+                        setNoteDetailDraft({ title: viewingNote.title, body: viewingNote.body, category: viewingNote.category, photo: "" });
                         setNoteDetailEditing(false);
                       }}
                       className="rounded-2xl bg-white px-4 py-2 text-sm font-black text-stone-500 shadow-sm"
@@ -1484,7 +1411,7 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => {
-                      setNoteDetailDraft({ title: viewingNote.title, body: viewingNote.body, category: viewingNote.category, photo: viewingNote.photo });
+                      setNoteDetailDraft({ title: viewingNote.title, body: viewingNote.body, category: viewingNote.category, photo: "" });
                       setNoteDetailEditing(true);
                     }}
                     className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-rose-400 shadow-sm"
@@ -1529,28 +1456,6 @@ export default function Home() {
                       ))}
                     </select>
                   </FieldLabel>
-                  <FieldLabel label="照片">
-                    <div className="rounded-2xl border border-rose-100 bg-white p-3">
-                      {parseNotePhotos(noteDetailDraft.photo).length > 0 && (
-                        <div className="mb-3 grid grid-cols-2 gap-2">
-                          {parseNotePhotos(noteDetailDraft.photo).map((photo, index) => (
-                            <img key={`${photo.slice(0, 24)}-${index}`} src={photo} alt={`笔记照片 ${index + 1}`} className="h-28 w-full rounded-2xl object-cover" />
-                          ))}
-                        </div>
-                      )}
-                      <div className="flex gap-2">
-                        <label className="flex-1 cursor-pointer rounded-2xl bg-rose-50 px-4 py-3 text-center text-sm font-black text-rose-500">
-                          上传照片
-                          <input type="file" accept="image/*" multiple className="hidden" onChange={(event) => handleNoteDetailPhotoChange(event.target.files)} />
-                        </label>
-                        {noteDetailDraft.photo && (
-                          <button type="button" onClick={() => setNoteDetailDraft((current) => ({ ...current, photo: "" }))} className="rounded-2xl bg-white px-4 py-3 text-sm font-black text-stone-400 shadow-sm">
-                            移除
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </FieldLabel>
                   <FieldLabel label="正文">
                     <textarea
                       value={noteDetailDraft.body}
@@ -1562,13 +1467,6 @@ export default function Home() {
                 </div>
               ) : (
                 <>
-                  {parseNotePhotos(viewingNote.photo).length > 0 && (
-                    <div className="mb-5 grid grid-cols-2 gap-2">
-                      {parseNotePhotos(viewingNote.photo).map((photo, index) => (
-                        <img key={`${photo.slice(0, 24)}-${index}`} src={photo} alt={`${viewingNote.title} 照片 ${index + 1}`} className="h-36 w-full rounded-[22px] object-cover" />
-                      ))}
-                    </div>
-                  )}
                   <p className="mb-2 text-xs font-black uppercase tracking-wider text-rose-300">Cat Note</p>
                   <h2 className="break-words text-3xl font-black leading-tight text-stone-900">{viewingNote.title}</h2>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -1698,7 +1596,7 @@ export default function Home() {
                   <X className="h-6 w-6" />
                 </button>
               </div>
-              {(syncMessage.includes("笔记") || syncMessage.includes("照片") || syncMessage.includes("标题")) && (
+              {(syncMessage.includes("笔记") || syncMessage.includes("标题")) && (
                 <p className="mb-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-black leading-5 text-rose-500">{syncMessage}</p>
               )}
 
@@ -1735,29 +1633,6 @@ export default function Home() {
                     rows={5}
                     className="w-full resize-none rounded-2xl border border-rose-100 bg-white px-4 py-3 text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-300 focus:ring-2 focus:ring-rose-200"
                   />
-                </FieldLabel>
-
-                <FieldLabel label="照片">
-                  <div className="rounded-2xl border border-rose-100 bg-white p-3">
-                    {parseNotePhotos(noteForm.photo).length > 0 ? (
-                      <div className="mb-3 grid grid-cols-2 gap-2">
-                        {parseNotePhotos(noteForm.photo).map((photo, index) => (
-                          <img key={`${photo.slice(0, 24)}-${index}`} src={photo} alt={`笔记照片 ${index + 1}`} className="h-28 w-full rounded-2xl object-cover" />
-                        ))}
-                      </div>
-                    ) : null}
-                    <div className="flex gap-2">
-                      <label className="flex-1 cursor-pointer rounded-2xl bg-rose-50 px-4 py-3 text-center text-sm font-black text-rose-500">
-                        上传照片
-                        <input type="file" accept="image/*" multiple className="hidden" onChange={(event) => handleNotePhotoChange(event.target.files)} />
-                      </label>
-                      {noteForm.photo && (
-                        <button type="button" onClick={() => setNoteForm({ ...noteForm, photo: "" })} className="rounded-2xl bg-white px-4 py-3 text-sm font-black text-stone-400 shadow-sm">
-                          移除
-                        </button>
-                      )}
-                    </div>
-                  </div>
                 </FieldLabel>
 
                 <div className="flex gap-3 pt-2">
