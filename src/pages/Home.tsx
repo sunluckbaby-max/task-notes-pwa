@@ -350,7 +350,13 @@ export default function Home() {
     try {
       const query = `cat_notes?select=*&space_code=eq.${encodeURIComponent(targetSpaceCode)}&order=updated_at.desc`;
       const data = (await remoteRequest(query, { method: "GET" })) as NoteRow[];
-      setNotes((data || []).map(toNote));
+      const remoteNotes = (data || []).map(toNote);
+      const localNotes = getLocalNotes(targetSpaceCode);
+      const mergedNotes = [
+        ...localNotes.filter((localNote) => !remoteNotes.some((remoteNote) => remoteNote.id === localNote.id)),
+        ...remoteNotes,
+      ].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      setNotes(mergedNotes);
     } catch {
       setNotes(getLocalNotes(targetSpaceCode));
     }
@@ -692,28 +698,30 @@ export default function Home() {
         photo: noteForm.photo,
       };
 
-      const saveNoteLocally = (message?: string) => {
-        const now = new Date().toISOString();
-        const currentNotes = getLocalNotes(spaceCode);
-        const nextNotes = editingNoteId
-          ? currentNotes.map((note) => (note.id === editingNoteId ? { ...note, ...payload, updatedAt: now } : note))
-          : [{ id: createId(), ...payload, createdAt: now, updatedAt: now }, ...currentNotes];
+      const now = new Date().toISOString();
+      const localId = editingNoteId || createId();
+      const optimisticNote: CatNote = editingNoteId
+        ? {
+            ...(notes.find((note) => note.id === editingNoteId) || { id: localId, createdAt: now, updatedAt: now, ...payload }),
+            ...payload,
+            updatedAt: now,
+          }
+        : { id: localId, ...payload, createdAt: now, updatedAt: now };
+      const optimisticNotes = editingNoteId ? notes.map((note) => (note.id === editingNoteId ? optimisticNote : note)) : [optimisticNote, ...notes];
 
-        if (!trySaveLocalNotes(spaceCode, nextNotes)) {
-          setSyncMessage("笔记保存失败：本地空间已满，请先删除旧大图笔记，或确认 Supabase 笔记表已创建。");
-          return false;
-        }
-
-        setNotes(nextNotes);
-        closeNoteForm();
-        if (message) setSyncMessage(message);
-        return true;
-      };
-
-      if (!canSync) {
-        saveNoteLocally();
-        return;
+      setNotes(optimisticNotes);
+      closeNoteForm();
+      setSyncMessage(canSync ? "笔记已先保存，正在同步云端" : "笔记已保存到本机");
+      const savedToLocal = trySaveLocalNotes(spaceCode, optimisticNotes);
+      if (!savedToLocal) {
+        trySaveLocalNotes(
+          spaceCode,
+          optimisticNotes.map((note) => ({ ...note, photo: "" }))
+        );
+        setSyncMessage(canSync ? "笔记已先保存，照片较大，正在尝试同步云端" : "笔记已保存，照片较大未缓存到本机");
       }
+
+      if (!canSync) return;
 
       try {
         if (editingNoteId) {
@@ -741,10 +749,9 @@ export default function Home() {
         }
 
         await refreshNotes();
-        closeNoteForm();
         setSyncMessage("笔记已保存");
       } catch (error) {
-        setSyncMessage(error instanceof Error ? `云端笔记保存失败：${error.message}` : "云端笔记保存失败");
+        setSyncMessage(error instanceof Error ? `笔记已保存在本机，云端同步失败：${error.message}` : "笔记已保存在本机，云端同步失败");
       }
     } catch (error) {
       setSyncMessage(error instanceof Error ? `笔记保存失败：${error.message}` : "笔记保存失败");
