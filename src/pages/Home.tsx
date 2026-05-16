@@ -992,22 +992,22 @@ export default function Home() {
         }
       `}</style>
       <div className="mx-auto h-[100dvh] min-h-[100svh] w-full max-w-[430px] overflow-hidden">
-        <div className="flex h-full w-full flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 pb-[calc(18rem+env(safe-area-inset-bottom))] pt-[calc(1.35rem+env(safe-area-inset-top))]">
-        <header className="header-soft-drift relative mb-5 min-h-[210px] overflow-hidden rounded-[30px] border border-white/80 bg-white/80 p-6 shadow-[0_12px_34px_rgba(120,80,50,0.10)] backdrop-blur-xl">
+        <div className="flex h-full w-full flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 pb-[calc(18rem+env(safe-area-inset-bottom))] pt-[calc(1.1rem+env(safe-area-inset-top))]">
+        <header className="header-soft-drift relative mb-4 min-h-[148px] overflow-hidden rounded-[28px] border border-white/80 bg-white/80 p-4 shadow-[0_10px_28px_rgba(120,80,50,0.09)] backdrop-blur-xl">
           <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-rose-200/70" />
           <div className="absolute -bottom-12 left-8 h-28 w-28 rounded-full bg-amber-200/70" />
-          <div className="relative flex items-start justify-between gap-4">
+          <div className="relative flex h-full items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-rose-100 px-4 py-2 text-lg font-black text-rose-500 shadow-[0_8px_18px_rgba(251,113,133,0.12)]">
-                <Sparkles className="h-5 w-5" strokeWidth={iconStroke} />
+              <div className="mb-2 inline-flex max-w-full items-center gap-1.5 whitespace-nowrap rounded-full bg-rose-100 px-3 py-1.5 text-[15px] font-black leading-none text-rose-500 shadow-[0_8px_18px_rgba(251,113,133,0.12)]">
+                <Sparkles className="h-4 w-4 shrink-0" strokeWidth={iconStroke} />
                 {activeTab === "tasks" ? "猫咪任务小窝" : "猫咪笔记本"}
               </div>
-              <p className="mt-2 text-sm font-medium text-stone-500">{activeTab === "tasks" ? "让小猫陪你整理每日任务" : "把灵感和生活碎片轻轻收好"}</p>
-              <button type="button" onClick={leaveSpace} className="mt-3 rounded-full bg-white/70 px-3 py-1 text-xs font-black text-rose-400">
+              <p className="truncate text-[13px] font-bold leading-5 text-stone-500">{activeTab === "tasks" ? "让小猫陪你整理每日任务" : "把灵感和生活碎片轻轻收好"}</p>
+              <button type="button" onClick={leaveSpace} className="mt-2 rounded-full bg-white/70 px-3 py-1 text-xs font-black text-rose-400">
                 切换同步空间
               </button>
             </div>
-            <div className="cat-float relative -mr-3 mt-1 h-40 w-40 shrink-0">
+            <div className="cat-float relative -mr-2 h-28 w-28 shrink-0">
               <div className="cat-soft-glow absolute inset-x-5 bottom-2 h-10 rounded-full bg-rose-200/40 blur-xl" />
               <img
                 src="/cat-cutout.png"
