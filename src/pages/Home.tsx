@@ -1512,14 +1512,14 @@ export default function Home() {
           </div>
         )}
 
-        <nav className="fixed bottom-0 left-1/2 z-30 grid w-full max-w-[430px] -translate-x-1/2 grid-cols-2 gap-2 border-t border-white/70 bg-white/80 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_26px_rgba(120,80,50,0.08)] backdrop-blur-xl">
+        <nav className="fixed bottom-0 left-1/2 z-30 grid w-full max-w-[430px] -translate-x-1/2 grid-cols-2 gap-2 border-t border-white/70 bg-white/80 px-4 pb-[env(safe-area-inset-bottom)] pt-1.5 shadow-[0_-10px_26px_rgba(120,80,50,0.08)] backdrop-blur-xl">
           <button
             type="button"
             onClick={() => {
               setActiveTab("tasks");
               setSearchText("");
             }}
-            className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl text-sm font-black transition ${activeTab === "tasks" ? "bg-rose-100 text-rose-500" : "text-stone-400"}`}
+            className={`flex min-h-11 items-center justify-center gap-2 rounded-2xl text-sm font-black transition ${activeTab === "tasks" ? "bg-rose-100 text-rose-500" : "text-stone-400"}`}
           >
             <PawPrint className="h-5 w-5" strokeWidth={iconStroke} />
             任务
@@ -1530,7 +1530,7 @@ export default function Home() {
               setActiveTab("notes");
               setSearchText("");
             }}
-            className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl text-sm font-black transition ${activeTab === "notes" ? "bg-rose-100 text-rose-500" : "text-stone-400"}`}
+            className={`flex min-h-11 items-center justify-center gap-2 rounded-2xl text-sm font-black transition ${activeTab === "notes" ? "bg-rose-100 text-rose-500" : "text-stone-400"}`}
           >
             <BookOpen className="h-5 w-5" strokeWidth={iconStroke} />
             笔记
