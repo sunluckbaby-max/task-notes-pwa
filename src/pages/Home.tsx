@@ -260,6 +260,15 @@ export default function Home() {
   const [showSpacePassword, setShowSpacePassword] = useState(false);
   const [spaceUnlocked, setSpaceUnlocked] = useState(!canSync || Boolean(savedAuth));
   const [syncMessage, setSyncMessage] = useState(canSync ? "云端同步已开启" : "本地模式：请检查 Vercel 环境变量");
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+
+  const headerTimeText = useMemo(() => {
+    const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const hours = currentTime.getHours();
+    const greeting = hours < 12 ? "Good Morning" : hours < 18 ? "Good Afternoon" : "Good Evening";
+    return `${weekdays[currentTime.getDay()]} · ${months[currentTime.getMonth()]} ${currentTime.getDate()} · ${greeting}`;
+  }, [currentTime]);
 
   useEffect(() => {
     document.documentElement.style.background = "#fff7ed";
@@ -277,6 +286,11 @@ export default function Home() {
 
     ensureMeta("theme-color", "#fff7ed");
     ensureMeta("apple-mobile-web-app-status-bar-style", "black-translucent");
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const refreshTasks = async (targetSpaceCode = spaceCode) => {
@@ -992,8 +1006,8 @@ export default function Home() {
         }
       `}</style>
       <div className="mx-auto h-[100dvh] min-h-[100svh] w-full max-w-[430px] overflow-hidden">
-        <div className="flex h-full w-full flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain px-3 pb-[calc(18rem+env(safe-area-inset-bottom))] pt-[calc(0.85rem+env(safe-area-inset-top))]">
-        <header className="header-soft-drift relative mb-2 min-h-[104px] overflow-hidden rounded-[22px] border border-white/80 bg-white/80 p-3 shadow-[0_7px_18px_rgba(120,80,50,0.07)] backdrop-blur-xl">
+        <div className="flex h-full w-full flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain px-3 pb-[calc(18rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))]">
+        <header className="header-soft-drift relative mb-2 min-h-[112px] overflow-hidden rounded-[22px] border border-white/80 bg-white/80 p-3 shadow-[0_7px_18px_rgba(120,80,50,0.07)] backdrop-blur-xl">
           <div className="absolute -right-8 -top-9 h-24 w-24 rounded-full bg-rose-200/70" />
           <div className="absolute -bottom-10 left-7 h-22 w-22 rounded-full bg-amber-200/70" />
           <div className="relative flex h-full items-center justify-between gap-3">
@@ -1003,11 +1017,15 @@ export default function Home() {
                 {activeTab === "tasks" ? "猫咪任务小窝" : "猫咪笔记本"}
               </div>
               <p className="truncate text-[11px] font-bold leading-4 text-stone-500">{activeTab === "tasks" ? "让小猫陪你整理每日任务" : "把灵感和生活碎片轻轻收好"}</p>
+              <div className="mt-1 inline-flex max-w-full items-center gap-1.5 truncate rounded-full bg-white/60 px-2.5 py-0.5 text-[10px] font-bold text-stone-500 shadow-sm backdrop-blur-sm">
+                <Clock className="h-3 w-3 shrink-0 text-amber-500" strokeWidth={iconStroke} />
+                <span className="truncate">{headerTimeText}</span>
+              </div>
               <button type="button" onClick={leaveSpace} className="mt-1 rounded-full bg-white/70 px-2 py-0.5 text-[10px] font-black text-rose-400">
                 切换同步空间
               </button>
             </div>
-            <div className="cat-float relative -mr-1 h-20 w-20 shrink-0">
+            <div className="cat-float relative -mr-1 mt-2 h-[76px] w-[76px] shrink-0">
               <div className="cat-soft-glow absolute inset-x-5 bottom-2 h-10 rounded-full bg-rose-200/40 blur-xl" />
               <img
                 src="/cat-cutout.png"
