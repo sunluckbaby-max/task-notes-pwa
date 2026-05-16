@@ -1025,7 +1025,7 @@ export default function Home() {
                 切换同步空间
               </button>
             </div>
-            <div className="cat-float relative -mr-1 mt-2 h-[106px] w-[106px] shrink-0">
+            <div className="cat-float relative -mr-1 mt-2 h-[116px] w-[116px] shrink-0">
               <div className="cat-soft-glow absolute inset-x-5 bottom-2 h-10 rounded-full bg-rose-200/40 blur-xl" />
               <img
                 src="/cat-cutout.png"
