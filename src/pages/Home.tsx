@@ -7,12 +7,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { Calendar, CheckCircle2, Circle, Clock, Eye, EyeOff, Folder, Lock, PawPrint, Pencil, Plus, Search, Sparkles, Tag, Trash2, X } from "lucide-react";
+import { BookOpen, Calendar, CheckCircle2, Circle, Clock, Eye, EyeOff, Folder, Image, Lock, PawPrint, Pencil, Plus, Search, Sparkles, Tag, Trash2, X } from "lucide-react";
 import { getTasks, addTask, updateTask, deleteTask, getCategories } from "@/lib/storage";
 import type { Task } from "@/lib/storage";
 import { formatDate, isToday, isOverdue } from "@/lib/utils";
 
 type FilterType = "all" | "today" | "upcoming" | "completed" | "overdue";
+type AppTab = "tasks" | "notes";
+type NoteCategory = "tech" | "career" | "life" | "other";
 
 const emptyFormData = {
   title: "",
@@ -23,10 +25,25 @@ const emptyFormData = {
   reminderTime: "",
 };
 
+const emptyNoteForm = {
+  title: "",
+  body: "",
+  category: "tech" as NoteCategory,
+  photo: "",
+};
+
 const DEFAULT_SPACE_CODE = "CAT-TASKS";
 const SPACE_CODE_KEY = "cat_task_space_code";
 const SPACE_AUTH_KEY = "cat_task_space_auth";
 const MIGRATED_SPACE_KEY_PREFIX = "cat_task_migrated_";
+const LOCAL_NOTES_KEY_PREFIX = "cat_notes_";
+
+const noteCategories: Array<{ id: NoteCategory; name: string; color: string; tint: string }> = [
+  { id: "tech", name: "科技", color: "#38BDF8", tint: "bg-sky-100 text-sky-500" },
+  { id: "career", name: "职业", color: "#8B5CF6", tint: "bg-violet-100 text-violet-500" },
+  { id: "life", name: "生活", color: "#FB7185", tint: "bg-rose-100 text-rose-500" },
+  { id: "other", name: "其他", color: "#F59E0B", tint: "bg-amber-100 text-amber-600" },
+];
 
 const filterLabels: Record<FilterType, string> = {
   all: "全部",
@@ -74,6 +91,26 @@ type TaskSpaceRow = {
   password_hash: string;
 };
 
+type CatNote = {
+  id: string;
+  title: string;
+  body: string;
+  category: NoteCategory;
+  photo: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type NoteRow = {
+  id: string;
+  title: string;
+  body: string | null;
+  category: NoteCategory | null;
+  photo: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 const toTask = (row: TaskRow): Task => ({
   id: row.id,
   title: row.title,
@@ -86,6 +123,32 @@ const toTask = (row: TaskRow): Task => ({
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
+
+const toNote = (row: NoteRow): CatNote => ({
+  id: row.id,
+  title: row.title,
+  body: row.body || "",
+  category: (row.category || "other") as NoteCategory,
+  photo: row.photo || "",
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+const getLocalNotesKey = (spaceCode: string) => `${LOCAL_NOTES_KEY_PREFIX}${spaceCode}`;
+
+const getLocalNotes = (spaceCode: string): CatNote[] => {
+  try {
+    const saved = localStorage.getItem(getLocalNotesKey(spaceCode));
+    if (!saved) return [];
+    return JSON.parse(saved) as CatNote[];
+  } catch {
+    return [];
+  }
+};
+
+const saveLocalNotes = (spaceCode: string, notes: CatNote[]) => {
+  localStorage.setItem(getLocalNotesKey(spaceCode), JSON.stringify(notes));
+};
 
 const remoteRequest = async (path: string, options: RequestInit = {}) => {
   if (!supabaseUrl || !supabaseAnonKey) throw new Error("Supabase is not configured");
@@ -133,7 +196,9 @@ const loadSavedSpaceAuth = () => {
 
 export default function Home() {
   const savedAuth = loadSavedSpaceAuth();
+  const [activeTab, setActiveTab] = useState<AppTab>("tasks");
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [notes, setNotes] = useState<CatNote[]>([]);
   const [categories] = useState(() => normalizeCategories(getCategories()));
   const allTags = useMemo(
     () => Array.from(new Set(tasks.flatMap((task) => task.tags))).sort((a, b) => a.localeCompare(b, "zh-CN")),
@@ -146,9 +211,14 @@ export default function Home() {
   const [showForm, setShowForm] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [viewingTaskId, setViewingTaskId] = useState<string | null>(null);
+  const [noteCategoryFilter, setNoteCategoryFilter] = useState<NoteCategory | "all">("all");
+  const [showNoteForm, setShowNoteForm] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [viewingNoteId, setViewingNoteId] = useState<string | null>(null);
   const [detailEditing, setDetailEditing] = useState(false);
   const [detailDraft, setDetailDraft] = useState({ title: "", description: "" });
   const [formData, setFormData] = useState(emptyFormData);
+  const [noteForm, setNoteForm] = useState(emptyNoteForm);
   const [spaceCode, setSpaceCode] = useState(() => savedAuth?.code || localStorage.getItem(SPACE_CODE_KEY) || DEFAULT_SPACE_CODE);
   const [spaceDraft, setSpaceDraft] = useState(() => savedAuth?.code || localStorage.getItem(SPACE_CODE_KEY) || DEFAULT_SPACE_CODE);
   const [spacePassword, setSpacePassword] = useState("");
@@ -213,14 +283,31 @@ export default function Home() {
     }
   };
 
+  const refreshNotes = async (targetSpaceCode = spaceCode) => {
+    if (!canSync) {
+      setNotes(getLocalNotes(targetSpaceCode));
+      return;
+    }
+
+    try {
+      const query = `cat_notes?select=*&space_code=eq.${encodeURIComponent(targetSpaceCode)}&order=updated_at.desc`;
+      const data = (await remoteRequest(query, { method: "GET" })) as NoteRow[];
+      setNotes((data || []).map(toNote));
+    } catch {
+      setNotes(getLocalNotes(targetSpaceCode));
+    }
+  };
+
   useEffect(() => {
     if (!spaceUnlocked) return undefined;
 
     refreshTasks(spaceCode);
+    refreshNotes(spaceCode);
     if (!canSync) return undefined;
 
     const timer = window.setInterval(() => {
       refreshTasks(spaceCode);
+      refreshNotes(spaceCode);
     }, 12000);
 
     return () => window.clearInterval(timer);
@@ -254,7 +341,34 @@ export default function Home() {
     resetForm();
   };
 
+  const resetNoteForm = () => {
+    setNoteForm(emptyNoteForm);
+    setEditingNoteId(null);
+  };
+
+  const openNewNoteForm = () => {
+    resetNoteForm();
+    setShowNoteForm(true);
+  };
+
+  const openEditNoteForm = (note: CatNote) => {
+    setEditingNoteId(note.id);
+    setNoteForm({
+      title: note.title,
+      body: note.body,
+      category: note.category,
+      photo: note.photo,
+    });
+    setShowNoteForm(true);
+  };
+
+  const closeNoteForm = () => {
+    setShowNoteForm(false);
+    resetNoteForm();
+  };
+
   const viewingTask = viewingTaskId ? tasks.find((task) => task.id === viewingTaskId) || null : null;
+  const viewingNote = viewingNoteId ? notes.find((note) => note.id === viewingNoteId) || null : null;
 
   useEffect(() => {
     if (!viewingTask) {
@@ -289,6 +403,16 @@ export default function Home() {
     if (dueDiff !== 0) return dueDiff;
     return new Date(second.updatedAt || 0).getTime() - new Date(first.updatedAt || 0).getTime();
   });
+
+  const filteredNotes = notes
+    .filter((note) => noteCategoryFilter === "all" || note.category === noteCategoryFilter)
+    .filter(
+      (note) =>
+        !searchText ||
+        note.title.toLowerCase().includes(searchText.toLowerCase()) ||
+        note.body.toLowerCase().includes(searchText.toLowerCase())
+    )
+    .sort((first, second) => new Date(second.updatedAt || 0).getTime() - new Date(first.updatedAt || 0).getTime());
 
   const enterSpace = async () => {
     const nextCode = spaceDraft.trim();
@@ -330,6 +454,7 @@ export default function Home() {
       setSpaceUnlocked(true);
       setSelectedCategory(null);
       setSelectedTag(null);
+      setNoteCategoryFilter("all");
       setSearchText("");
       setSyncMessage(`已进入同步空间：${nextCode}`);
     } catch (error) {
@@ -341,6 +466,7 @@ export default function Home() {
     localStorage.removeItem(SPACE_AUTH_KEY);
     setSpaceUnlocked(false);
     setTasks([]);
+    setNotes([]);
     setSpacePassword("");
     setSyncMessage("请输入同步码和密码");
   };
@@ -475,6 +601,96 @@ export default function Home() {
     } catch (error) {
       setSyncMessage(error instanceof Error ? error.message : "保存详情失败");
     }
+  };
+
+  const handleSaveNote = async () => {
+    if (!noteForm.title.trim()) return;
+
+    const payload = {
+      title: noteForm.title.trim(),
+      body: noteForm.body,
+      category: noteForm.category,
+      photo: noteForm.photo,
+    };
+
+    if (!canSync) {
+      const now = new Date().toISOString();
+      const currentNotes = getLocalNotes(spaceCode);
+      const nextNotes = editingNoteId
+        ? currentNotes.map((note) => (note.id === editingNoteId ? { ...note, ...payload, updatedAt: now } : note))
+        : [{ id: crypto.randomUUID(), ...payload, createdAt: now, updatedAt: now }, ...currentNotes];
+      saveLocalNotes(spaceCode, nextNotes);
+      setNotes(nextNotes);
+      closeNoteForm();
+      return;
+    }
+
+    try {
+      if (editingNoteId) {
+        await remoteRequest(`cat_notes?id=eq.${editingNoteId}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            title: payload.title,
+            body: payload.body || null,
+            category: payload.category,
+            photo: payload.photo || null,
+            updated_at: new Date().toISOString(),
+          }),
+        });
+      } else {
+        await remoteRequest("cat_notes", {
+          method: "POST",
+          body: JSON.stringify({
+            space_code: spaceCode,
+            title: payload.title,
+            body: payload.body || null,
+            category: payload.category,
+            photo: payload.photo || null,
+          }),
+        });
+      }
+
+      await refreshNotes();
+      closeNoteForm();
+    } catch (error) {
+      const now = new Date().toISOString();
+      const currentNotes = getLocalNotes(spaceCode);
+      const nextNotes = editingNoteId
+        ? currentNotes.map((note) => (note.id === editingNoteId ? { ...note, ...payload, updatedAt: now } : note))
+        : [{ id: crypto.randomUUID(), ...payload, createdAt: now, updatedAt: now }, ...currentNotes];
+      saveLocalNotes(spaceCode, nextNotes);
+      setNotes(nextNotes);
+      closeNoteForm();
+      setSyncMessage(error instanceof Error ? `笔记暂存本地：${error.message}` : "笔记暂存本地");
+    }
+  };
+
+  const handleDeleteNote = async (id: string) => {
+    if (!canSync) {
+      const nextNotes = getLocalNotes(spaceCode).filter((note) => note.id !== id);
+      saveLocalNotes(spaceCode, nextNotes);
+      setNotes(nextNotes);
+      return;
+    }
+
+    try {
+      await remoteRequest(`cat_notes?id=eq.${id}`, { method: "DELETE" });
+      await refreshNotes();
+    } catch (error) {
+      const nextNotes = getLocalNotes(spaceCode).filter((note) => note.id !== id);
+      saveLocalNotes(spaceCode, nextNotes);
+      setNotes(nextNotes);
+      setSyncMessage(error instanceof Error ? `删除本地笔记：${error.message}` : "删除本地笔记");
+    }
+  };
+
+  const handleNotePhotoChange = (file?: File) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setNoteForm((current) => ({ ...current, photo: String(reader.result || "") }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleDeleteEditingTask = async () => {
@@ -643,9 +859,9 @@ export default function Home() {
             <div className="min-w-0">
               <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-rose-100 px-4 py-2 text-lg font-black text-rose-500 shadow-[0_8px_18px_rgba(251,113,133,0.12)]">
                 <Sparkles className="h-5 w-5" strokeWidth={iconStroke} />
-                猫咪任务小窝
+                {activeTab === "tasks" ? "猫咪任务小窝" : "猫咪笔记本"}
               </div>
-              <p className="mt-2 text-sm font-medium text-stone-500">让小猫陪你整理每日任务</p>
+              <p className="mt-2 text-sm font-medium text-stone-500">{activeTab === "tasks" ? "让小猫陪你整理每日任务" : "把灵感、照片和生活碎片轻轻收好"}</p>
               <button type="button" onClick={leaveSpace} className="mt-3 rounded-full bg-white/70 px-3 py-1 text-xs font-black text-rose-400">
                 切换同步空间
               </button>
@@ -661,6 +877,8 @@ export default function Home() {
           </div>
         </header>
 
+        {activeTab === "tasks" ? (
+          <>
         <section className="mb-4 rounded-[28px] border border-white/80 bg-white/75 p-4 shadow-[0_8px_24px_rgba(120,80,50,0.07)] backdrop-blur">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div className="inline-flex min-w-0 items-center gap-2">
@@ -839,10 +1057,99 @@ export default function Home() {
           )}
         </section>
 
+          </>
+        ) : (
+          <>
+            <section className="mb-4 rounded-[28px] border border-white/80 bg-white/75 p-4 shadow-[0_8px_24px_rgba(120,80,50,0.07)] backdrop-blur">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-black text-stone-800">笔记小窝</p>
+                  <p className="mt-1 text-xs font-bold leading-5 text-stone-400">已经收好 {notes.length} 条笔记，照片和想法都可以慢慢整理。</p>
+                </div>
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-rose-100 text-rose-500">
+                  <BookOpen className="h-6 w-6" strokeWidth={iconStroke} />
+                </div>
+              </div>
+            </section>
+
+            <label className="mb-4 flex min-h-14 w-full items-center gap-3 rounded-[24px] border border-white/80 bg-white/80 px-4 shadow-[0_8px_24px_rgba(120,80,50,0.06)] backdrop-blur">
+              <Search className="h-5 w-5 text-rose-300" strokeWidth={iconStroke} />
+              <input
+                type="text"
+                placeholder="搜索猫咪笔记本..."
+                value={searchText}
+                onChange={(event) => setSearchText(event.target.value)}
+                className="min-w-0 flex-1 bg-transparent text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-400"
+              />
+            </label>
+
+            <section className="mb-5">
+              <p className="mb-2 px-1 text-xs font-black uppercase tracking-wider text-stone-400">笔记分类</p>
+              <div className="grid grid-cols-5 gap-2">
+                <button type="button" onClick={() => setNoteCategoryFilter("all")} className={`min-h-10 rounded-full px-2 text-xs font-black ${noteCategoryFilter === "all" ? "bg-rose-400 text-white" : "border border-white/80 bg-white/70 text-stone-500"}`}>
+                  全部
+                </button>
+                {noteCategories.map((category) => (
+                  <button key={category.id} type="button" onClick={() => setNoteCategoryFilter(category.id)} className={`min-h-10 rounded-full px-2 text-xs font-black ${noteCategoryFilter === category.id ? "text-white" : "border border-white/80 bg-white/70 text-stone-500"}`} style={{ backgroundColor: noteCategoryFilter === category.id ? category.color : undefined }}>
+                    {category.name}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="flex flex-1 flex-col gap-3">
+              {filteredNotes.length === 0 ? (
+                <div className="grid min-h-[230px] place-items-center rounded-[32px] border border-dashed border-rose-200 bg-white/60 p-6 text-center">
+                  <div>
+                    <div className="mb-3 text-6xl">ฅ^•ﻌ•^ฅ</div>
+                    <p className="font-black text-stone-700">笔记本还很干净</p>
+                    <p className="mt-1 text-sm font-medium text-stone-400">点右下角添加第一条猫咪笔记</p>
+                  </div>
+                </div>
+              ) : (
+                filteredNotes.map((note) => {
+                  const category = noteCategories.find((item) => item.id === note.category) || noteCategories[3];
+                  return (
+                    <article key={note.id} className="overflow-hidden rounded-[24px] border border-white/80 bg-white/80 shadow-[0_7px_20px_rgba(120,80,50,0.06)] backdrop-blur">
+                      {note.photo && (
+                        <button type="button" onClick={() => setViewingNoteId(note.id)} className="block h-36 w-full overflow-hidden">
+                          <img src={note.photo} alt={note.title} className="h-full w-full object-cover" />
+                        </button>
+                      )}
+                      <div className="flex gap-2.5 p-3">
+                        <button type="button" onClick={() => setViewingNoteId(note.id)} className="min-w-0 flex-1 text-left">
+                          <h3 className="task-title-clamp text-[16px] font-black leading-5 text-stone-900">{note.title}</h3>
+                          {note.body && <p className="task-description-clamp mt-2 text-xs font-medium leading-5 text-stone-500">{note.body}</p>}
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-black ${category.tint}`}>{category.name}</span>
+                            <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-black text-stone-400">{formatDate(note.updatedAt.slice(0, 10))}</span>
+                            {note.photo && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-[11px] font-black text-rose-500">
+                                <Image className="h-3 w-3" strokeWidth={iconStroke} />
+                                照片
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                        <button onClick={() => openEditNoteForm(note)} className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-white/80 text-rose-300 transition hover:bg-rose-50 hover:text-rose-500" aria-label="编辑笔记">
+                          <Pencil className="h-4 w-4" strokeWidth={iconStroke} />
+                        </button>
+                        <button onClick={() => handleDeleteNote(note.id)} className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-rose-50/80 text-rose-300 transition hover:bg-rose-100 hover:text-rose-500" aria-label="删除笔记">
+                          <Trash2 className="h-4 w-4" strokeWidth={iconStroke} />
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })
+              )}
+            </section>
+          </>
+        )}
+
         <button
-          onClick={openNewTaskForm}
-          className="fixed bottom-7 right-[max(1.25rem,calc((100vw-430px)/2+1.25rem))] grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-rose-400 to-amber-300 text-white shadow-[0_12px_26px_rgba(251,113,133,0.24)] transition active:scale-95"
-          aria-label="新建任务"
+          onClick={activeTab === "tasks" ? openNewTaskForm : openNewNoteForm}
+          className="fixed bottom-[calc(4.9rem+env(safe-area-inset-bottom))] right-[max(1.25rem,calc((100vw-430px)/2+1.25rem))] grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-rose-400 to-amber-300 text-white shadow-[0_12px_26px_rgba(251,113,133,0.24)] transition active:scale-95"
+          aria-label={activeTab === "tasks" ? "新建任务" : "新建笔记"}
         >
           <Plus className="h-8 w-8" strokeWidth={iconStroke} />
         </button>
@@ -971,6 +1278,52 @@ export default function Home() {
           </div>
         )}
 
+        {viewingNote && (
+          <div className="fixed inset-0 z-40 flex items-end justify-center bg-[#fff7ed]/70 px-3 backdrop-blur-md">
+            <article className="max-h-[92dvh] w-full max-w-[430px] overflow-y-auto overflow-x-hidden rounded-t-[34px] border border-white/80 bg-[#fffdf8] p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] shadow-[0_-14px_34px_rgba(120,80,50,0.12)]">
+              <div className="mb-6 flex items-center justify-between gap-3">
+                <button type="button" onClick={() => setViewingNoteId(null)} className="rounded-2xl bg-rose-50 px-4 py-2 text-sm font-black text-rose-500">
+                  返回
+                </button>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => openEditNoteForm(viewingNote)} className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-rose-400 shadow-sm" aria-label="编辑笔记">
+                    <Pencil className="h-5 w-5" strokeWidth={iconStroke} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await handleDeleteNote(viewingNote.id);
+                      setViewingNoteId(null);
+                    }}
+                    className="grid h-10 w-10 place-items-center rounded-2xl bg-rose-50 text-rose-400"
+                    aria-label="删除笔记"
+                  >
+                    <Trash2 className="h-5 w-5" strokeWidth={iconStroke} />
+                  </button>
+                </div>
+              </div>
+
+              {viewingNote.photo && <img src={viewingNote.photo} alt={viewingNote.title} className="mb-5 max-h-[320px] w-full rounded-[28px] object-cover" />}
+              <p className="mb-2 text-xs font-black uppercase tracking-wider text-rose-300">Cat Note</p>
+              <h2 className="break-words text-3xl font-black leading-tight text-stone-900">{viewingNote.title}</h2>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {(() => {
+                  const category = noteCategories.find((item) => item.id === viewingNote.category) || noteCategories[3];
+                  return <span className={`rounded-full px-3 py-1 text-xs font-black ${category.tint}`}>{category.name}</span>;
+                })()}
+                <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-black text-stone-400">{formatDate(viewingNote.updatedAt.slice(0, 10))}</span>
+              </div>
+              <div className="mt-5 rounded-[26px] bg-white/70 px-3.5 py-4">
+                {viewingNote.body ? (
+                  <p className="whitespace-pre-wrap break-words text-[15px] font-medium leading-7 text-stone-600">{viewingNote.body}</p>
+                ) : (
+                  <p className="text-[15px] font-bold text-stone-300">这条笔记还没有正文。</p>
+                )}
+              </div>
+            </article>
+          </div>
+        )}
+
         {showForm && (
           <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-950/30 px-3 backdrop-blur-sm">
             <div className="max-h-[92dvh] w-full max-w-[430px] overflow-y-auto overflow-x-hidden overscroll-contain rounded-t-[34px] border border-white/80 bg-[#fffaf3] p-5 pb-[calc(2rem+env(safe-area-inset-bottom))] shadow-[0_-22px_70px_rgba(120,80,50,0.20)]">
@@ -1065,6 +1418,124 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        {showNoteForm && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-950/30 px-3 backdrop-blur-sm">
+            <div className="max-h-[92dvh] w-full max-w-[430px] overflow-y-auto overflow-x-hidden overscroll-contain rounded-t-[34px] border border-white/80 bg-[#fffaf3] p-5 pb-[calc(2rem+env(safe-area-inset-bottom))] shadow-[0_-22px_70px_rgba(120,80,50,0.20)]">
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-black text-rose-400">{editingNoteId ? "修改猫咪笔记" : "新笔记进小窝"}</p>
+                  <h2 className="text-2xl font-black text-stone-900">{editingNoteId ? "编辑笔记" : "新建笔记"}</h2>
+                </div>
+                <button onClick={closeNoteForm} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-stone-400 shadow-sm">
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <FieldLabel label="笔记标题" required>
+                  <input
+                    type="text"
+                    placeholder="比如：今天学到的新东西"
+                    value={noteForm.title}
+                    onChange={(event) => setNoteForm({ ...noteForm, title: event.target.value })}
+                    className="w-full rounded-2xl border border-rose-100 bg-white px-4 py-3 text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-300 focus:ring-2 focus:ring-rose-200"
+                  />
+                </FieldLabel>
+
+                <FieldLabel label="分类">
+                  <select
+                    value={noteForm.category}
+                    onChange={(event) => setNoteForm({ ...noteForm, category: event.target.value as NoteCategory })}
+                    className="w-full rounded-2xl border border-rose-100 bg-white px-4 py-3 text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-300 focus:ring-2 focus:ring-rose-200"
+                  >
+                    {noteCategories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </FieldLabel>
+
+                <FieldLabel label="正文">
+                  <textarea
+                    placeholder="写下笔记内容..."
+                    value={noteForm.body}
+                    onChange={(event) => setNoteForm({ ...noteForm, body: event.target.value })}
+                    rows={5}
+                    className="w-full resize-none rounded-2xl border border-rose-100 bg-white px-4 py-3 text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-300 focus:ring-2 focus:ring-rose-200"
+                  />
+                </FieldLabel>
+
+                <FieldLabel label="照片">
+                  <div className="rounded-2xl border border-rose-100 bg-white p-3">
+                    {noteForm.photo ? (
+                      <div className="mb-3 overflow-hidden rounded-2xl">
+                        <img src={noteForm.photo} alt="笔记照片" className="max-h-56 w-full object-cover" />
+                      </div>
+                    ) : null}
+                    <div className="flex gap-2">
+                      <label className="flex-1 cursor-pointer rounded-2xl bg-rose-50 px-4 py-3 text-center text-sm font-black text-rose-500">
+                        上传照片
+                        <input type="file" accept="image/*" className="hidden" onChange={(event) => handleNotePhotoChange(event.target.files?.[0])} />
+                      </label>
+                      {noteForm.photo && (
+                        <button type="button" onClick={() => setNoteForm({ ...noteForm, photo: "" })} className="rounded-2xl bg-white px-4 py-3 text-sm font-black text-stone-400 shadow-sm">
+                          移除
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </FieldLabel>
+
+                <div className="flex gap-3 pt-2">
+                  {editingNoteId && (
+                    <button
+                      onClick={async () => {
+                        await handleDeleteNote(editingNoteId);
+                        closeNoteForm();
+                      }}
+                      className="rounded-2xl bg-rose-100 px-4 py-3 font-black text-rose-500"
+                    >
+                      删除
+                    </button>
+                  )}
+                  <button onClick={closeNoteForm} className="flex-1 rounded-2xl bg-white px-4 py-3 font-black text-stone-500 shadow-sm">
+                    取消
+                  </button>
+                  <button onClick={handleSaveNote} className="flex-1 rounded-2xl bg-stone-900 px-4 py-3 font-black text-white shadow-[0_10px_26px_rgba(39,39,42,0.22)]">
+                    {editingNoteId ? "保存修改" : "创建笔记"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <nav className="fixed bottom-0 left-1/2 z-30 grid w-full max-w-[430px] -translate-x-1/2 grid-cols-2 gap-2 border-t border-white/70 bg-white/80 px-4 pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_26px_rgba(120,80,50,0.08)] backdrop-blur-xl">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("tasks");
+              setSearchText("");
+            }}
+            className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl text-sm font-black transition ${activeTab === "tasks" ? "bg-rose-100 text-rose-500" : "text-stone-400"}`}
+          >
+            <PawPrint className="h-5 w-5" strokeWidth={iconStroke} />
+            任务
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab("notes");
+              setSearchText("");
+            }}
+            className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl text-sm font-black transition ${activeTab === "notes" ? "bg-rose-100 text-rose-500" : "text-stone-400"}`}
+          >
+            <BookOpen className="h-5 w-5" strokeWidth={iconStroke} />
+            笔记
+          </button>
+        </nav>
         </div>
       </div>
     </div>
