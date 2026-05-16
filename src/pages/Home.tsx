@@ -849,13 +849,15 @@ export default function Home() {
           bottom: 0 !important;
           width: 100%;
           max-width: 430px;
+          height: calc(56px + env(safe-area-inset-bottom, 0px));
           transform: translateX(-50%);
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
+          align-items: start;
           gap: 0.5rem;
-          padding: 0.45rem 1rem max(env(safe-area-inset-bottom), 0.5rem);
+          padding: 0.35rem 1rem 0;
           border-top: 1px solid rgba(255, 255, 255, 0.72);
-          background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 250, 243, 0.98));
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 250, 243, 1) 68%, rgba(255, 250, 243, 1));
           box-shadow: 0 -8px 22px rgba(120, 80, 50, 0.055);
           backdrop-filter: blur(22px);
           -webkit-backdrop-filter: blur(22px);
