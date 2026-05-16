@@ -903,6 +903,13 @@ export default function Home() {
   return (
     <div className="fixed inset-0 overflow-hidden overscroll-none bg-[radial-gradient(circle_at_12%_0%,#fde8c8_0,#fff7ed_30%,#fff1f3_68%,#fffaf5_100%)] text-stone-800 [touch-action:pan-y]">
       <style>{`
+        html,
+        body,
+        #root {
+          min-height: 100%;
+          background: radial-gradient(circle at 12% 0%, #fde8c8 0, #fff7ed 30%, #fff1f3 68%, #fffaf5 100%) !important;
+        }
+
         @keyframes catFloat {
           0%, 100% { transform: translate3d(0, 0, 0) rotate(-0.4deg); }
           50% { transform: translate3d(0, 6px, 0) rotate(0.5deg); }
@@ -980,7 +987,7 @@ export default function Home() {
         }
       `}</style>
       <div className="mx-auto h-[100dvh] min-h-[100svh] w-full max-w-[430px] overflow-hidden">
-        <div className="flex h-full w-full flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 pb-[calc(10rem+env(safe-area-inset-bottom))] pt-[calc(0.9rem+env(safe-area-inset-top))]">
+        <div className="flex h-full w-full flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 pb-[calc(14rem+env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
         <header className="header-soft-drift relative mb-4 overflow-hidden rounded-[30px] border border-white/80 bg-white/80 p-5 shadow-[0_12px_34px_rgba(120,80,50,0.10)] backdrop-blur-xl">
           <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-rose-200/70" />
           <div className="absolute -bottom-12 left-8 h-28 w-28 rounded-full bg-amber-200/70" />
@@ -1271,6 +1278,8 @@ export default function Home() {
             </section>
           </>
         )}
+
+        <div aria-hidden="true" className="h-48 shrink-0" />
 
         <button
           onClick={activeTab === "tasks" ? openNewTaskForm : openNewNoteForm}
