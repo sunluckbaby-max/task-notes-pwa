@@ -1013,11 +1013,11 @@ export default function Home() {
           <div className="relative flex h-full items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex min-w-0 items-center gap-2">
-                <div className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-rose-100 px-2 py-1 text-[12px] font-black leading-none text-rose-500 shadow-[0_5px_12px_rgba(251,113,133,0.09)]">
-                  <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={iconStroke} />
+                <div className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-rose-100 px-2.5 py-1.5 text-[14px] font-black leading-none text-rose-500 shadow-[0_5px_12px_rgba(251,113,133,0.09)]">
+                  <Sparkles className="h-4 w-4 shrink-0" strokeWidth={iconStroke} />
                   <span>{activeTab === "tasks" ? "任务小窝" : "猫咪笔记本"}</span>
                 </div>
-                <p className="min-w-0 flex-1 truncate text-[10px] font-bold leading-4 text-stone-500">{activeTab === "tasks" ? "小猫陪你整理每日任务" : "灵感和生活碎片轻轻收好"}</p>
+                <p className="min-w-0 flex-1 truncate text-[10px] font-bold leading-4 text-stone-500">{activeTab === "tasks" ? "整理每日任务" : "收好生活碎片"}</p>
               </div>
               <div className="mt-1 inline-flex max-w-full items-center gap-1.5 truncate rounded-full bg-white/60 px-2.5 py-0.5 text-[10px] font-bold text-stone-500 shadow-sm backdrop-blur-sm">
                 <Clock className="h-3 w-3 shrink-0 text-amber-500" strokeWidth={iconStroke} />
