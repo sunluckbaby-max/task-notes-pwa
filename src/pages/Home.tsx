@@ -39,18 +39,18 @@ const MIGRATED_SPACE_KEY_PREFIX = "cat_task_migrated_";
 const LOCAL_NOTES_KEY_PREFIX = "cat_notes_";
 
 const noteCategories: Array<{ id: NoteCategory; name: string; color: string; tint: string }> = [
-  { id: "tech", name: "科技", color: "#38BDF8", tint: "bg-sky-100 text-sky-500" },
-  { id: "career", name: "职业", color: "#8B5CF6", tint: "bg-violet-100 text-violet-500" },
-  { id: "life", name: "生活", color: "#FB7185", tint: "bg-rose-100 text-rose-500" },
-  { id: "other", name: "其他", color: "#F59E0B", tint: "bg-amber-100 text-amber-600" },
+  { id: "tech", name: "ç§‘æŠ€", color: "#38BDF8", tint: "bg-sky-100 text-sky-500" },
+  { id: "career", name: "èŒä¸š", color: "#8B5CF6", tint: "bg-violet-100 text-violet-500" },
+  { id: "life", name: "ç”Ÿæ´»", color: "#FB7185", tint: "bg-rose-100 text-rose-500" },
+  { id: "other", name: "å…¶ä»–", color: "#F59E0B", tint: "bg-amber-100 text-amber-600" },
 ];
 
 const filterLabels: Record<FilterType, string> = {
-  all: "全部",
-  today: "今天",
-  upcoming: "即将",
-  overdue: "逾期",
-  completed: "完成",
+  all: "å…¨éƒ¨",
+  today: "ä»Šå¤©",
+  upcoming: "å³å°†",
+  overdue: "é€¾æœŸ",
+  completed: "å®Œæˆ",
 };
 
 const normalizeCategoryId = (categoryId: string) => (categoryId === "shopping" ? "personal" : categoryId);
@@ -58,7 +58,7 @@ const normalizeCategoryId = (categoryId: string) => (categoryId === "shopping" ?
 const normalizeCategories = (categories: ReturnType<typeof getCategories>) =>
   categories
     .filter((category) => category.id !== "shopping")
-    .map((category) => (category.id === "personal" ? { ...category, name: "生活" } : category));
+    .map((category) => (category.id === "personal" ? { ...category, name: "ç”Ÿæ´»" } : category));
 
 const getTaskDueTime = (task: Task) => {
   if (!task.dueDate) return Number.POSITIVE_INFINITY;
@@ -217,6 +217,8 @@ export default function Home() {
   const [viewingNoteId, setViewingNoteId] = useState<string | null>(null);
   const [detailEditing, setDetailEditing] = useState(false);
   const [detailDraft, setDetailDraft] = useState({ title: "", description: "" });
+  const [noteDetailEditing, setNoteDetailEditing] = useState(false);
+  const [noteDetailDraft, setNoteDetailDraft] = useState(emptyNoteForm);
   const [formData, setFormData] = useState(emptyFormData);
   const [noteForm, setNoteForm] = useState(emptyNoteForm);
   const [spaceCode, setSpaceCode] = useState(() => savedAuth?.code || localStorage.getItem(SPACE_CODE_KEY) || DEFAULT_SPACE_CODE);
@@ -224,7 +226,7 @@ export default function Home() {
   const [spacePassword, setSpacePassword] = useState("");
   const [showSpacePassword, setShowSpacePassword] = useState(false);
   const [spaceUnlocked, setSpaceUnlocked] = useState(!canSync || Boolean(savedAuth));
-  const [syncMessage, setSyncMessage] = useState(canSync ? "云端同步已开启" : "本地模式：请检查 Vercel 环境变量");
+  const [syncMessage, setSyncMessage] = useState(canSync ? "äº‘ç«¯åŒæ­¥å·²å¼€å¯" : "æœ¬åœ°æ¨¡å¼ï¼šè¯·æ£€æŸ¥ Vercel çŽ¯å¢ƒå˜é‡");
 
   useEffect(() => {
     document.documentElement.style.background = "#fff7ed";
@@ -247,7 +249,7 @@ export default function Home() {
   const refreshTasks = async (targetSpaceCode = spaceCode) => {
     if (!canSync) {
       setTasks(getTasks());
-      setSyncMessage("本地模式：请检查 Vercel 环境变量");
+      setSyncMessage("æœ¬åœ°æ¨¡å¼ï¼šè¯·æ£€æŸ¥ Vercel çŽ¯å¢ƒå˜é‡");
       return;
     }
 
@@ -271,15 +273,15 @@ export default function Home() {
         const migrated = (await remoteRequest("tasks", { method: "POST", body: JSON.stringify(migratedRows) })) as TaskRow[];
         localStorage.setItem(migratedKey, "1");
         setTasks((migrated || []).map(toTask));
-        setSyncMessage(`已把本地任务同步到：${targetSpaceCode}`);
+        setSyncMessage(`å·²æŠŠæœ¬åœ°ä»»åŠ¡åŒæ­¥åˆ°ï¼š${targetSpaceCode}`);
         return;
       }
 
       setTasks((data || []).map(toTask));
-      setSyncMessage(`正在同步：${targetSpaceCode}`);
+      setSyncMessage(`æ­£åœ¨åŒæ­¥ï¼š${targetSpaceCode}`);
     } catch (error) {
       setTasks(getTasks());
-      setSyncMessage(error instanceof Error ? error.message : "同步失败，已切回本地数据");
+      setSyncMessage(error instanceof Error ? error.message : "åŒæ­¥å¤±è´¥ï¼Œå·²åˆ‡å›žæœ¬åœ°æ•°æ®");
     }
   };
 
@@ -380,6 +382,21 @@ export default function Home() {
     setDetailDraft({ title: viewingTask.title, description: viewingTask.description || "" });
   }, [viewingTask?.id]);
 
+  useEffect(() => {
+    if (!viewingNote) {
+      setNoteDetailEditing(false);
+      setNoteDetailDraft(emptyNoteForm);
+      return;
+    }
+
+    setNoteDetailDraft({
+      title: viewingNote.title,
+      body: viewingNote.body,
+      category: viewingNote.category,
+      photo: viewingNote.photo,
+    });
+  }, [viewingNote?.id]);
+
   const filteredTasks = tasks
     .filter((task) => {
       if (filter === "completed") return task.completed;
@@ -419,14 +436,14 @@ export default function Home() {
     const nextPassword = spacePassword.trim();
 
     if (!nextCode || !nextPassword) {
-      setSyncMessage("请输入同步码和密码");
+      setSyncMessage("è¯·è¾“å…¥åŒæ­¥ç å’Œå¯†ç ");
       return;
     }
 
     if (!canSync) {
       setSpaceCode(nextCode);
       setSpaceUnlocked(true);
-      setSyncMessage("本地模式：请检查 Vercel 环境变量");
+      setSyncMessage("æœ¬åœ°æ¨¡å¼ï¼šè¯·æ£€æŸ¥ Vercel çŽ¯å¢ƒå˜é‡");
       return;
     }
 
@@ -438,7 +455,7 @@ export default function Home() {
 
       if (existing?.length) {
         if (existing[0].password_hash !== passwordHash) {
-          setSyncMessage("同步空间密码不对");
+          setSyncMessage("åŒæ­¥ç©ºé—´å¯†ç ä¸å¯¹");
           return;
         }
       } else {
@@ -456,9 +473,9 @@ export default function Home() {
       setSelectedTag(null);
       setNoteCategoryFilter("all");
       setSearchText("");
-      setSyncMessage(`已进入同步空间：${nextCode}`);
+      setSyncMessage(`å·²è¿›å…¥åŒæ­¥ç©ºé—´ï¼š${nextCode}`);
     } catch (error) {
-      setSyncMessage(error instanceof Error ? error.message : "进入同步空间失败");
+      setSyncMessage(error instanceof Error ? error.message : "è¿›å…¥åŒæ­¥ç©ºé—´å¤±è´¥");
     }
   };
 
@@ -468,7 +485,7 @@ export default function Home() {
     setTasks([]);
     setNotes([]);
     setSpacePassword("");
-    setSyncMessage("请输入同步码和密码");
+    setSyncMessage("è¯·è¾“å…¥åŒæ­¥ç å’Œå¯†ç ");
   };
 
   const handleSaveTask = async () => {
@@ -537,7 +554,7 @@ export default function Home() {
       await refreshTasks();
       closeForm();
     } catch (error) {
-      setSyncMessage(error instanceof Error ? error.message : "保存失败");
+      setSyncMessage(error instanceof Error ? error.message : "ä¿å­˜å¤±è´¥");
     }
   };
 
@@ -555,7 +572,7 @@ export default function Home() {
       });
       await refreshTasks();
     } catch (error) {
-      setSyncMessage(error instanceof Error ? error.message : "更新失败");
+      setSyncMessage(error instanceof Error ? error.message : "æ›´æ–°å¤±è´¥");
     }
   };
 
@@ -570,7 +587,7 @@ export default function Home() {
       await remoteRequest(`tasks?id=eq.${id}`, { method: "DELETE" });
       await refreshTasks();
     } catch (error) {
-      setSyncMessage(error instanceof Error ? error.message : "删除失败");
+      setSyncMessage(error instanceof Error ? error.message : "åˆ é™¤å¤±è´¥");
     }
   };
 
@@ -599,7 +616,7 @@ export default function Home() {
       await refreshTasks();
       setDetailEditing(false);
     } catch (error) {
-      setSyncMessage(error instanceof Error ? error.message : "保存详情失败");
+      setSyncMessage(error instanceof Error ? error.message : "ä¿å­˜è¯¦æƒ…å¤±è´¥");
     }
   };
 
@@ -661,7 +678,7 @@ export default function Home() {
       saveLocalNotes(spaceCode, nextNotes);
       setNotes(nextNotes);
       closeNoteForm();
-      setSyncMessage(error instanceof Error ? `笔记暂存本地：${error.message}` : "笔记暂存本地");
+      setSyncMessage(error instanceof Error ? `ç¬”è®°æš‚å­˜æœ¬åœ°ï¼š${error.message}` : "ç¬”è®°æš‚å­˜æœ¬åœ°");
     }
   };
 
@@ -680,7 +697,44 @@ export default function Home() {
       const nextNotes = getLocalNotes(spaceCode).filter((note) => note.id !== id);
       saveLocalNotes(spaceCode, nextNotes);
       setNotes(nextNotes);
-      setSyncMessage(error instanceof Error ? `删除本地笔记：${error.message}` : "删除本地笔记");
+      setSyncMessage(error instanceof Error ? `åˆ é™¤æœ¬åœ°ç¬”è®°ï¼š${error.message}` : "åˆ é™¤æœ¬åœ°ç¬”è®°");
+    }
+  };
+
+  const handleSaveNoteDetail = async () => {
+    if (!viewingNote || !noteDetailDraft.title.trim()) return;
+
+    const payload = {
+      title: noteDetailDraft.title.trim(),
+      body: noteDetailDraft.body,
+      category: noteDetailDraft.category,
+      photo: noteDetailDraft.photo,
+    };
+
+    if (!canSync) {
+      const now = new Date().toISOString();
+      const nextNotes = getLocalNotes(spaceCode).map((note) => (note.id === viewingNote.id ? { ...note, ...payload, updatedAt: now } : note));
+      saveLocalNotes(spaceCode, nextNotes);
+      setNotes(nextNotes);
+      setNoteDetailEditing(false);
+      return;
+    }
+
+    try {
+      await remoteRequest(`cat_notes?id=eq.${viewingNote.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          title: payload.title,
+          body: payload.body || null,
+          category: payload.category,
+          photo: payload.photo || null,
+          updated_at: new Date().toISOString(),
+        }),
+      });
+      await refreshNotes();
+      setNoteDetailEditing(false);
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? `ä¿å­˜ç¬”è®°å¤±è´¥ï¼š${error.message}` : "ä¿å­˜ç¬”è®°å¤±è´¥");
     }
   };
 
@@ -689,6 +743,15 @@ export default function Home() {
     const reader = new FileReader();
     reader.onload = () => {
       setNoteForm((current) => ({ ...current, photo: String(reader.result || "") }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleNoteDetailPhotoChange = (file?: File) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setNoteDetailDraft((current) => ({ ...current, photo: String(reader.result || "") }));
     };
     reader.readAsDataURL(file);
   };
@@ -715,10 +778,10 @@ export default function Home() {
   const completionPercent = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
   const summaryHint =
     stats.total === 0
-      ? "猫窝还很安静，先放进一个小任务吧 ✨"
+      ? "çŒ«çªè¿˜å¾ˆå®‰é™ï¼Œå…ˆæ”¾è¿›ä¸€ä¸ªå°ä»»åŠ¡å§ âœ¨"
       : remainingTasks === 0
-        ? "今天的小事都收好啦，摸摸小猫休息一下 🐾"
-        : `还有 ${remainingTasks} 件小事，慢慢来也没关系 ✨`;
+        ? "ä»Šå¤©çš„å°äº‹éƒ½æ”¶å¥½å•¦ï¼Œæ‘¸æ‘¸å°çŒ«ä¼‘æ¯ä¸€ä¸‹ ðŸ¾"
+        : `è¿˜æœ‰ ${remainingTasks} ä»¶å°äº‹ï¼Œæ…¢æ…¢æ¥ä¹Ÿæ²¡å…³ç³» âœ¨`;
   const iconStroke = 2.35;
 
   if (!spaceUnlocked) {
@@ -733,34 +796,34 @@ export default function Home() {
                 <div className="min-w-0">
                   <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-500">
                     <Lock className="h-3.5 w-3.5" strokeWidth={iconStroke} />
-                    同步空间登录
+                    åŒæ­¥ç©ºé—´ç™»å½•
                   </div>
-                  <h1 className="text-3xl font-black tracking-normal text-stone-900">任务记事本</h1>
-                  <p className="mt-2 text-sm font-bold leading-6 text-stone-500">输入同一个同步码和密码，就会进入同一个猫咪任务空间。</p>
+                  <h1 className="text-3xl font-black tracking-normal text-stone-900">ä»»åŠ¡è®°äº‹æœ¬</h1>
+                  <p className="mt-2 text-sm font-bold leading-6 text-stone-500">è¾“å…¥åŒä¸€ä¸ªåŒæ­¥ç å’Œå¯†ç ï¼Œå°±ä¼šè¿›å…¥åŒä¸€ä¸ªçŒ«å’ªä»»åŠ¡ç©ºé—´ã€‚</p>
                 </div>
                 <img
                   src="/cat-cutout.png"
-                  alt="我的猫咪"
+                  alt="æˆ‘çš„çŒ«å’ª"
                   className="h-28 w-28 shrink-0 object-contain drop-shadow-[0_12px_18px_rgba(120,80,50,0.18)]"
                 />
               </div>
 
               <div className="space-y-3">
                 <label className="grid gap-2 text-sm font-black text-stone-600">
-                  <span>同步码</span>
+                  <span>åŒæ­¥ç </span>
                   <input
                     value={spaceDraft}
                     onChange={(event) => setSpaceDraft(event.target.value)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter") enterSpace();
                     }}
-                    placeholder="比如 MYTASK2026"
+                    placeholder="æ¯”å¦‚ MYTASK2026"
                     className="w-full rounded-2xl border border-rose-100 bg-white px-4 py-3 text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-300 focus:ring-2 focus:ring-rose-200"
                   />
                 </label>
 
                 <label className="grid gap-2 text-sm font-black text-stone-600">
-                  <span>空间密码</span>
+                  <span>ç©ºé—´å¯†ç </span>
                   <div className="flex items-center rounded-2xl border border-rose-100 bg-white px-4 focus-within:ring-2 focus-within:ring-rose-200">
                     <input
                       type={showSpacePassword ? "text" : "password"}
@@ -769,7 +832,7 @@ export default function Home() {
                       onKeyDown={(event) => {
                         if (event.key === "Enter") enterSpace();
                       }}
-                      placeholder="输入只有你知道的密码"
+                      placeholder="è¾“å…¥åªæœ‰ä½ çŸ¥é“çš„å¯†ç "
                       className="min-w-0 flex-1 bg-transparent py-3 text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-300"
                     />
                     <button type="button" onClick={() => setShowSpacePassword((current) => !current)} className="grid h-10 w-10 place-items-center text-stone-400">
@@ -779,12 +842,12 @@ export default function Home() {
                 </label>
 
                 <button type="button" onClick={enterSpace} className="mt-2 w-full rounded-2xl bg-stone-900 px-4 py-3 font-black text-white shadow-[0_10px_24px_rgba(39,39,42,0.16)]">
-                  进入任务空间
+                  è¿›å…¥ä»»åŠ¡ç©ºé—´
                 </button>
               </div>
 
               <p className="mt-4 rounded-2xl bg-rose-50 px-3 py-2 text-xs font-bold leading-5 text-stone-500">
-                {syncMessage || "首次输入会自动创建同步空间。请把同步码和密码截图保存，忘记后无法找回。"}
+                {syncMessage || "é¦–æ¬¡è¾“å…¥ä¼šè‡ªåŠ¨åˆ›å»ºåŒæ­¥ç©ºé—´ã€‚è¯·æŠŠåŒæ­¥ç å’Œå¯†ç æˆªå›¾ä¿å­˜ï¼Œå¿˜è®°åŽæ— æ³•æ‰¾å›žã€‚"}
               </p>
             </div>
           </section>
@@ -861,7 +924,7 @@ export default function Home() {
           box-shadow: 0 -8px 22px rgba(120, 80, 50, 0.055);
           backdrop-filter: blur(22px);
           -webkit-backdrop-filter: blur(22px);
-          z-index: 80;
+          z-index: 30;
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -881,18 +944,18 @@ export default function Home() {
             <div className="min-w-0">
               <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-rose-100 px-4 py-2 text-lg font-black text-rose-500 shadow-[0_8px_18px_rgba(251,113,133,0.12)]">
                 <Sparkles className="h-5 w-5" strokeWidth={iconStroke} />
-                {activeTab === "tasks" ? "猫咪任务小窝" : "猫咪笔记本"}
+                {activeTab === "tasks" ? "çŒ«å’ªä»»åŠ¡å°çª" : "çŒ«å’ªç¬”è®°æœ¬"}
               </div>
-              <p className="mt-2 text-sm font-medium text-stone-500">{activeTab === "tasks" ? "让小猫陪你整理每日任务" : "把灵感、照片和生活碎片轻轻收好"}</p>
+              <p className="mt-2 text-sm font-medium text-stone-500">{activeTab === "tasks" ? "è®©å°çŒ«é™ªä½ æ•´ç†æ¯æ—¥ä»»åŠ¡" : "æŠŠçµæ„Ÿã€ç…§ç‰‡å’Œç”Ÿæ´»ç¢Žç‰‡è½»è½»æ”¶å¥½"}</p>
               <button type="button" onClick={leaveSpace} className="mt-3 rounded-full bg-white/70 px-3 py-1 text-xs font-black text-rose-400">
-                切换同步空间
+                åˆ‡æ¢åŒæ­¥ç©ºé—´
               </button>
             </div>
             <div className="cat-float relative -mr-5 -mt-2 h-36 w-36 shrink-0">
               <div className="cat-soft-glow absolute inset-x-5 bottom-2 h-10 rounded-full bg-rose-200/40 blur-xl" />
               <img
                 src="/cat-cutout.png"
-                alt="我的猫咪"
+                alt="æˆ‘çš„çŒ«å’ª"
                 className="relative h-full w-full object-contain drop-shadow-[0_12px_18px_rgba(120,80,50,0.18)]"
               />
             </div>
@@ -904,15 +967,15 @@ export default function Home() {
         <section className="mb-4 rounded-[28px] border border-white/80 bg-white/75 p-4 shadow-[0_8px_24px_rgba(120,80,50,0.07)] backdrop-blur">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div className="inline-flex min-w-0 items-center gap-2">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-rose-100 text-lg">🐾</span>
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-rose-100 text-lg">ðŸ¾</span>
               <div className="min-w-0">
-                <p className="text-sm font-black text-stone-800">任务状态</p>
+                <p className="text-sm font-black text-stone-800">ä»»åŠ¡çŠ¶æ€</p>
                 <p className="mt-0.5 text-xs font-bold text-stone-400">{summaryHint}</p>
               </div>
             </div>
             <div className="shrink-0 rounded-2xl bg-rose-50 px-3 py-2 text-right">
               <p className="text-sm font-black text-rose-500">{stats.completed}/{stats.total}</p>
-              <p className="text-[11px] font-black text-stone-400">已完成</p>
+              <p className="text-[11px] font-black text-stone-400">å·²å®Œæˆ</p>
             </div>
           </div>
           <div className="h-3 overflow-hidden rounded-full bg-rose-50">
@@ -922,7 +985,7 @@ export default function Home() {
             />
           </div>
           <div className="mt-2 flex items-center justify-between text-[11px] font-black text-stone-300">
-            <span>慢慢完成</span>
+            <span>æ…¢æ…¢å®Œæˆ</span>
             <span>{completionPercent}%</span>
           </div>
         </section>
@@ -931,7 +994,7 @@ export default function Home() {
           <Search className="h-5 w-5 text-rose-300" strokeWidth={iconStroke} />
           <input
             type="text"
-            placeholder="搜索猫窝里的任务..."
+            placeholder="æœç´¢çŒ«çªé‡Œçš„ä»»åŠ¡..."
             value={searchText}
             onChange={(event) => setSearchText(event.target.value)}
             className="min-w-0 flex-1 bg-transparent text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-400"
@@ -957,7 +1020,7 @@ export default function Home() {
 
         {categories.length > 0 && (
           <section className="mb-5">
-            <p className="mb-2 px-1 text-xs font-black uppercase tracking-wider text-stone-400">分类</p>
+            <p className="mb-2 px-1 text-xs font-black uppercase tracking-wider text-stone-400">åˆ†ç±»</p>
             <div className="grid grid-cols-4 gap-2">
               <button
                 onClick={() => setSelectedCategory(null)}
@@ -965,7 +1028,7 @@ export default function Home() {
                   selectedCategory === null ? "bg-rose-400 text-white" : "border border-white/80 bg-white/70 text-stone-500"
                 }`}
               >
-                全部
+                å…¨éƒ¨
               </button>
               {categories.map((category) => (
                 <button
@@ -987,7 +1050,7 @@ export default function Home() {
 
         {allTags.length > 0 && (
           <section className="mb-5">
-            <p className="mb-2 px-1 text-xs font-black uppercase tracking-wider text-stone-400">标签</p>
+            <p className="mb-2 px-1 text-xs font-black uppercase tracking-wider text-stone-400">æ ‡ç­¾</p>
             <div className="flex flex-wrap gap-2 pb-1">
               {allTags.map((tag) => (
                 <button
@@ -1009,9 +1072,9 @@ export default function Home() {
           {filteredTasks.length === 0 ? (
             <div className="grid min-h-[230px] place-items-center rounded-[32px] border border-dashed border-rose-200 bg-white/60 p-6 text-center">
               <div>
-                <div className="mb-3 text-6xl">(=^･ω･^=)</div>
-                <p className="font-black text-stone-700">猫窝现在很安静</p>
-                <p className="mt-1 text-sm font-medium text-stone-400">点右下角的小爪子添加任务</p>
+                <div className="mb-3 text-6xl">(=^ï½¥Ï‰ï½¥^=)</div>
+                <p className="font-black text-stone-700">çŒ«çªçŽ°åœ¨å¾ˆå®‰é™</p>
+                <p className="mt-1 text-sm font-medium text-stone-400">ç‚¹å³ä¸‹è§’çš„å°çˆªå­æ·»åŠ ä»»åŠ¡</p>
               </div>
             </div>
           ) : (
@@ -1021,12 +1084,12 @@ export default function Home() {
                   <button
                     onClick={() => handleToggleTask(task.id, task.completed)}
                     className="mt-1 shrink-0 text-rose-300 transition hover:text-rose-500"
-                    aria-label={task.completed ? "标记为未完成" : "标记为完成"}
+                    aria-label={task.completed ? "æ ‡è®°ä¸ºæœªå®Œæˆ" : "æ ‡è®°ä¸ºå®Œæˆ"}
                   >
                     {task.completed ? <CheckCircle2 className="h-6 w-6 text-emerald-400" strokeWidth={iconStroke} /> : <Circle className="h-6 w-6" strokeWidth={iconStroke} />}
                   </button>
 
-                  <button type="button" onClick={() => setViewingTaskId(task.id)} className="min-w-0 flex-1 text-left" aria-label="查看任务详情">
+                  <button type="button" onClick={() => setViewingTaskId(task.id)} className="min-w-0 flex-1 text-left" aria-label="æŸ¥çœ‹ä»»åŠ¡è¯¦æƒ…">
                     <div className="mb-2 flex items-start justify-between gap-2">
                       <h3 className={`task-title-clamp text-[15px] font-black leading-5 ${task.completed ? "text-stone-400 line-through" : "text-stone-900"}`}>{task.title}</h3>
                     </div>
@@ -1065,12 +1128,12 @@ export default function Home() {
                   <button
                     onClick={() => openEditTaskForm(task)}
                     className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-white/80 text-rose-300 transition hover:bg-rose-50 hover:text-rose-500"
-                    aria-label="编辑任务"
+                    aria-label="ç¼–è¾‘ä»»åŠ¡"
                   >
                     <Pencil className="h-4 w-4" strokeWidth={iconStroke} />
                   </button>
 
-                  <button onClick={() => handleDeleteTask(task.id)} className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-rose-50/80 text-rose-300 transition hover:bg-rose-100 hover:text-rose-500" aria-label="删除任务">
+                  <button onClick={() => handleDeleteTask(task.id)} className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-rose-50/80 text-rose-300 transition hover:bg-rose-100 hover:text-rose-500" aria-label="åˆ é™¤ä»»åŠ¡">
                     <Trash2 className="h-4 w-4" strokeWidth={iconStroke} />
                   </button>
                 </div>
@@ -1085,8 +1148,8 @@ export default function Home() {
             <section className="mb-4 rounded-[28px] border border-white/80 bg-white/75 p-4 shadow-[0_8px_24px_rgba(120,80,50,0.07)] backdrop-blur">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-black text-stone-800">笔记小窝</p>
-                  <p className="mt-1 text-xs font-bold leading-5 text-stone-400">已经收好 {notes.length} 条笔记，照片和想法都可以慢慢整理。</p>
+                  <p className="text-sm font-black text-stone-800">ç¬”è®°å°çª</p>
+                  <p className="mt-1 text-xs font-bold leading-5 text-stone-400">å·²ç»æ”¶å¥½ {notes.length} æ¡ç¬”è®°ï¼Œç…§ç‰‡å’Œæƒ³æ³•éƒ½å¯ä»¥æ…¢æ…¢æ•´ç†ã€‚</p>
                 </div>
                 <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-rose-100 text-rose-500">
                   <BookOpen className="h-6 w-6" strokeWidth={iconStroke} />
@@ -1098,7 +1161,7 @@ export default function Home() {
               <Search className="h-5 w-5 text-rose-300" strokeWidth={iconStroke} />
               <input
                 type="text"
-                placeholder="搜索猫咪笔记本..."
+                placeholder="æœç´¢çŒ«å’ªç¬”è®°æœ¬..."
                 value={searchText}
                 onChange={(event) => setSearchText(event.target.value)}
                 className="min-w-0 flex-1 bg-transparent text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-400"
@@ -1106,10 +1169,10 @@ export default function Home() {
             </label>
 
             <section className="mb-5">
-              <p className="mb-2 px-1 text-xs font-black uppercase tracking-wider text-stone-400">笔记分类</p>
+              <p className="mb-2 px-1 text-xs font-black uppercase tracking-wider text-stone-400">ç¬”è®°åˆ†ç±»</p>
               <div className="grid grid-cols-5 gap-2">
                 <button type="button" onClick={() => setNoteCategoryFilter("all")} className={`min-h-10 rounded-full px-2 text-xs font-black ${noteCategoryFilter === "all" ? "bg-rose-400 text-white" : "border border-white/80 bg-white/70 text-stone-500"}`}>
-                  全部
+                  å…¨éƒ¨
                 </button>
                 {noteCategories.map((category) => (
                   <button key={category.id} type="button" onClick={() => setNoteCategoryFilter(category.id)} className={`min-h-10 rounded-full px-2 text-xs font-black ${noteCategoryFilter === category.id ? "text-white" : "border border-white/80 bg-white/70 text-stone-500"}`} style={{ backgroundColor: noteCategoryFilter === category.id ? category.color : undefined }}>
@@ -1123,9 +1186,9 @@ export default function Home() {
               {filteredNotes.length === 0 ? (
                 <div className="grid min-h-[230px] place-items-center rounded-[32px] border border-dashed border-rose-200 bg-white/60 p-6 text-center">
                   <div>
-                    <div className="mb-3 text-6xl">ฅ^•ﻌ•^ฅ</div>
-                    <p className="font-black text-stone-700">笔记本还很干净</p>
-                    <p className="mt-1 text-sm font-medium text-stone-400">点右下角添加第一条猫咪笔记</p>
+                    <div className="mb-3 text-6xl">à¸…^â€¢ï»Œâ€¢^à¸…</div>
+                    <p className="font-black text-stone-700">ç¬”è®°æœ¬è¿˜å¾ˆå¹²å‡€</p>
+                    <p className="mt-1 text-sm font-medium text-stone-400">ç‚¹å³ä¸‹è§’æ·»åŠ ç¬¬ä¸€æ¡çŒ«å’ªç¬”è®°</p>
                   </div>
                 </div>
               ) : (
@@ -1148,15 +1211,23 @@ export default function Home() {
                             {note.photo && (
                               <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-[11px] font-black text-rose-500">
                                 <Image className="h-3 w-3" strokeWidth={iconStroke} />
-                                照片
+                                ç…§ç‰‡
                               </span>
                             )}
                           </div>
                         </button>
-                        <button onClick={() => openEditNoteForm(note)} className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-white/80 text-rose-300 transition hover:bg-rose-50 hover:text-rose-500" aria-label="编辑笔记">
+                        <button
+                          onClick={() => {
+                            setViewingNoteId(note.id);
+                            setNoteDetailDraft({ title: note.title, body: note.body, category: note.category, photo: note.photo });
+                            setNoteDetailEditing(true);
+                          }}
+                          className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-white/80 text-rose-300 transition hover:bg-rose-50 hover:text-rose-500"
+                          aria-label="ç¼–è¾‘ç¬”è®°"
+                        >
                           <Pencil className="h-4 w-4" strokeWidth={iconStroke} />
                         </button>
-                        <button onClick={() => handleDeleteNote(note.id)} className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-rose-50/80 text-rose-300 transition hover:bg-rose-100 hover:text-rose-500" aria-label="删除笔记">
+                        <button onClick={() => handleDeleteNote(note.id)} className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-rose-50/80 text-rose-300 transition hover:bg-rose-100 hover:text-rose-500" aria-label="åˆ é™¤ç¬”è®°">
                           <Trash2 className="h-4 w-4" strokeWidth={iconStroke} />
                         </button>
                       </div>
@@ -1171,7 +1242,7 @@ export default function Home() {
         <button
           onClick={activeTab === "tasks" ? openNewTaskForm : openNewNoteForm}
           className="fixed bottom-[calc(4.9rem+env(safe-area-inset-bottom))] right-[max(1.25rem,calc((100vw-430px)/2+1.25rem))] grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-rose-400 to-amber-300 text-white shadow-[0_12px_26px_rgba(251,113,133,0.24)] transition active:scale-95"
-          aria-label={activeTab === "tasks" ? "新建任务" : "新建笔记"}
+          aria-label={activeTab === "tasks" ? "æ–°å»ºä»»åŠ¡" : "æ–°å»ºç¬”è®°"}
         >
           <Plus className="h-8 w-8" strokeWidth={iconStroke} />
         </button>
@@ -1185,7 +1256,7 @@ export default function Home() {
                   onClick={() => setViewingTaskId(null)}
                   className="rounded-2xl bg-rose-50 px-4 py-2 text-sm font-black text-rose-500"
                 >
-                  返回
+                  è¿”å›ž
                 </button>
                 <div className="flex gap-2">
                   <button
@@ -1195,7 +1266,7 @@ export default function Home() {
                       setDetailEditing(true);
                     }}
                     className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-rose-400 shadow-sm"
-                    aria-label="编辑任务"
+                    aria-label="ç¼–è¾‘ä»»åŠ¡"
                   >
                     <Pencil className="h-5 w-5" strokeWidth={iconStroke} />
                   </button>
@@ -1206,7 +1277,7 @@ export default function Home() {
                       setViewingTaskId(null);
                     }}
                     className="grid h-10 w-10 place-items-center rounded-2xl bg-rose-50 text-rose-400"
-                    aria-label="删除任务"
+                    aria-label="åˆ é™¤ä»»åŠ¡"
                   >
                     <Trash2 className="h-5 w-5" strokeWidth={iconStroke} />
                   </button>
@@ -1264,13 +1335,13 @@ export default function Home() {
                     <textarea
                       value={detailDraft.description}
                       onChange={(event) => setDetailDraft((current) => ({ ...current, description: event.target.value }))}
-                      placeholder="写一点备注，小猫会帮你记住"
+                      placeholder="å†™ä¸€ç‚¹å¤‡æ³¨ï¼Œå°çŒ«ä¼šå¸®ä½ è®°ä½"
                       className="min-h-[280px] w-full resize-none bg-transparent text-[15px] font-medium leading-7 text-stone-600 outline-none placeholder:text-stone-300"
                     />
                   ) : viewingTask.description ? (
                     <p className="whitespace-pre-wrap break-words text-[15px] font-medium leading-7 text-stone-600">{viewingTask.description}</p>
                   ) : (
-                    <p className="text-[15px] font-bold text-stone-300">这里还没有写描述。</p>
+                    <p className="text-[15px] font-bold text-stone-300">è¿™é‡Œè¿˜æ²¡æœ‰å†™æè¿°ã€‚</p>
                   )}
                 </div>
 
@@ -1284,14 +1355,14 @@ export default function Home() {
                       }}
                       className="flex-1 rounded-2xl bg-white px-4 py-3 font-black text-stone-500 shadow-sm"
                     >
-                      取消
+                      å–æ¶ˆ
                     </button>
                     <button
                       type="button"
                       onClick={handleSaveDetail}
                       className="flex-1 rounded-2xl bg-stone-900 px-4 py-3 font-black text-white shadow-[0_10px_24px_rgba(39,39,42,0.16)]"
                     >
-                      保存
+                      ä¿å­˜
                     </button>
                   </div>
                 )}
@@ -1301,14 +1372,39 @@ export default function Home() {
         )}
 
         {viewingNote && (
-          <div className="fixed inset-0 z-40 flex items-end justify-center bg-[#fff7ed]/70 px-3 backdrop-blur-md">
+          <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#fff7ed]/70 px-3 backdrop-blur-md">
             <article className="max-h-[92dvh] w-full max-w-[430px] overflow-y-auto overflow-x-hidden rounded-t-[34px] border border-white/80 bg-[#fffdf8] p-6 pb-[calc(2rem+env(safe-area-inset-bottom))] shadow-[0_-14px_34px_rgba(120,80,50,0.12)]">
               <div className="mb-6 flex items-center justify-between gap-3">
                 <button type="button" onClick={() => setViewingNoteId(null)} className="rounded-2xl bg-rose-50 px-4 py-2 text-sm font-black text-rose-500">
-                  返回
+                  è¿”å›ž
                 </button>
+                {noteDetailEditing ? (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNoteDetailDraft({ title: viewingNote.title, body: viewingNote.body, category: viewingNote.category, photo: viewingNote.photo });
+                        setNoteDetailEditing(false);
+                      }}
+                      className="rounded-2xl bg-white px-4 py-2 text-sm font-black text-stone-500 shadow-sm"
+                    >
+                      å–æ¶ˆ
+                    </button>
+                    <button type="button" onClick={handleSaveNoteDetail} className="rounded-2xl bg-stone-900 px-4 py-2 text-sm font-black text-white shadow-[0_10px_24px_rgba(39,39,42,0.16)]">
+                      ä¿å­˜
+                    </button>
+                  </div>
+                ) : (
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => openEditNoteForm(viewingNote)} className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-rose-400 shadow-sm" aria-label="编辑笔记">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNoteDetailDraft({ title: viewingNote.title, body: viewingNote.body, category: viewingNote.category, photo: viewingNote.photo });
+                      setNoteDetailEditing(true);
+                    }}
+                    className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-rose-400 shadow-sm"
+                    aria-label="ç¼–è¾‘ç¬”è®°"
+                  >
                     <Pencil className="h-5 w-5" strokeWidth={iconStroke} />
                   </button>
                   <button
@@ -1318,30 +1414,82 @@ export default function Home() {
                       setViewingNoteId(null);
                     }}
                     className="grid h-10 w-10 place-items-center rounded-2xl bg-rose-50 text-rose-400"
-                    aria-label="删除笔记"
+                    aria-label="åˆ é™¤ç¬”è®°"
                   >
                     <Trash2 className="h-5 w-5" strokeWidth={iconStroke} />
                   </button>
                 </div>
-              </div>
-
-              {viewingNote.photo && <img src={viewingNote.photo} alt={viewingNote.title} className="mb-5 max-h-[320px] w-full rounded-[28px] object-cover" />}
-              <p className="mb-2 text-xs font-black uppercase tracking-wider text-rose-300">Cat Note</p>
-              <h2 className="break-words text-3xl font-black leading-tight text-stone-900">{viewingNote.title}</h2>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                {(() => {
-                  const category = noteCategories.find((item) => item.id === viewingNote.category) || noteCategories[3];
-                  return <span className={`rounded-full px-3 py-1 text-xs font-black ${category.tint}`}>{category.name}</span>;
-                })()}
-                <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-black text-stone-400">{formatDate(viewingNote.updatedAt.slice(0, 10))}</span>
-              </div>
-              <div className="mt-5 rounded-[26px] bg-white/70 px-3.5 py-4">
-                {viewingNote.body ? (
-                  <p className="whitespace-pre-wrap break-words text-[15px] font-medium leading-7 text-stone-600">{viewingNote.body}</p>
-                ) : (
-                  <p className="text-[15px] font-bold text-stone-300">这条笔记还没有正文。</p>
                 )}
               </div>
+
+              {noteDetailEditing ? (
+                <div className="space-y-4">
+                  <FieldLabel label="笔记标题" required>
+                    <input
+                      value={noteDetailDraft.title}
+                      onChange={(event) => setNoteDetailDraft((current) => ({ ...current, title: event.target.value }))}
+                      className="w-full rounded-3xl border border-rose-100 bg-white/80 px-4 py-3 text-[24px] font-black leading-tight text-stone-900 outline-none focus:ring-2 focus:ring-rose-200"
+                    />
+                  </FieldLabel>
+                  <FieldLabel label="分类">
+                    <select
+                      value={noteDetailDraft.category}
+                      onChange={(event) => setNoteDetailDraft((current) => ({ ...current, category: event.target.value as NoteCategory }))}
+                      className="w-full rounded-2xl border border-rose-100 bg-white px-4 py-3 text-[16px] font-semibold text-stone-800 outline-none focus:ring-2 focus:ring-rose-200"
+                    >
+                      {noteCategories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </FieldLabel>
+                  <FieldLabel label="照片">
+                    <div className="rounded-2xl border border-rose-100 bg-white p-3">
+                      {noteDetailDraft.photo && <img src={noteDetailDraft.photo} alt="笔记照片" className="mb-3 max-h-56 w-full rounded-2xl object-cover" />}
+                      <div className="flex gap-2">
+                        <label className="flex-1 cursor-pointer rounded-2xl bg-rose-50 px-4 py-3 text-center text-sm font-black text-rose-500">
+                          上传照片
+                          <input type="file" accept="image/*" className="hidden" onChange={(event) => handleNoteDetailPhotoChange(event.target.files?.[0])} />
+                        </label>
+                        {noteDetailDraft.photo && (
+                          <button type="button" onClick={() => setNoteDetailDraft((current) => ({ ...current, photo: "" }))} className="rounded-2xl bg-white px-4 py-3 text-sm font-black text-stone-400 shadow-sm">
+                            移除
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </FieldLabel>
+                  <FieldLabel label="正文">
+                    <textarea
+                      value={noteDetailDraft.body}
+                      onChange={(event) => setNoteDetailDraft((current) => ({ ...current, body: event.target.value }))}
+                      placeholder="写下笔记内容..."
+                      className="min-h-[280px] w-full resize-none rounded-[26px] bg-white/70 px-3.5 py-4 text-[15px] font-medium leading-7 text-stone-600 outline-none placeholder:text-stone-300"
+                    />
+                  </FieldLabel>
+                </div>
+              ) : (
+                <>
+                  {viewingNote.photo && <img src={viewingNote.photo} alt={viewingNote.title} className="mb-5 max-h-[320px] w-full rounded-[28px] object-cover" />}
+                  <p className="mb-2 text-xs font-black uppercase tracking-wider text-rose-300">Cat Note</p>
+                  <h2 className="break-words text-3xl font-black leading-tight text-stone-900">{viewingNote.title}</h2>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {(() => {
+                      const category = noteCategories.find((item) => item.id === viewingNote.category) || noteCategories[3];
+                      return <span className={`rounded-full px-3 py-1 text-xs font-black ${category.tint}`}>{category.name}</span>;
+                    })()}
+                    <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-black text-stone-400">{formatDate(viewingNote.updatedAt.slice(0, 10))}</span>
+                  </div>
+                  <div className="mt-5 rounded-[26px] bg-white/70 px-3.5 py-4">
+                    {viewingNote.body ? (
+                      <p className="whitespace-pre-wrap break-words text-[15px] font-medium leading-7 text-stone-600">{viewingNote.body}</p>
+                    ) : (
+                      <p className="text-[15px] font-bold text-stone-300">这条笔记还没有正文。</p>
+                    )}
+                  </div>
+                </>
+              )}
             </article>
           </div>
         )}
@@ -1351,8 +1499,8 @@ export default function Home() {
             <div className="max-h-[92dvh] w-full max-w-[430px] overflow-y-auto overflow-x-hidden overscroll-contain rounded-t-[34px] border border-white/80 bg-[#fffaf3] p-5 pb-[calc(2rem+env(safe-area-inset-bottom))] shadow-[0_-22px_70px_rgba(120,80,50,0.20)]">
               <div className="mb-5 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-black text-rose-400">{editingTaskId ? "修改猫咪任务" : "新任务进猫窝"}</p>
-                  <h2 className="text-2xl font-black text-stone-900">{editingTaskId ? "编辑任务" : "新建任务"}</h2>
+                  <p className="text-sm font-black text-rose-400">{editingTaskId ? "ä¿®æ”¹çŒ«å’ªä»»åŠ¡" : "æ–°ä»»åŠ¡è¿›çŒ«çª"}</p>
+                  <h2 className="text-2xl font-black text-stone-900">{editingTaskId ? "ç¼–è¾‘ä»»åŠ¡" : "æ–°å»ºä»»åŠ¡"}</h2>
                 </div>
                 <button onClick={closeForm} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-stone-400 shadow-sm">
                   <X className="h-6 w-6" />
@@ -1360,19 +1508,19 @@ export default function Home() {
               </div>
 
               <div className="space-y-4">
-                <FieldLabel label="任务标题" required>
+                <FieldLabel label="ä»»åŠ¡æ ‡é¢˜" required>
                   <input
                     type="text"
-                    placeholder="比如：整理明天计划"
+                    placeholder="æ¯”å¦‚ï¼šæ•´ç†æ˜Žå¤©è®¡åˆ’"
                     value={formData.title}
                     onChange={(event) => setFormData({ ...formData, title: event.target.value })}
                     className="w-full rounded-2xl border border-rose-100 bg-white px-4 py-3 text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-300 focus:ring-2 focus:ring-rose-200"
                   />
                 </FieldLabel>
 
-                <FieldLabel label="描述">
+                <FieldLabel label="æè¿°">
                   <textarea
-                    placeholder="写一点备注，小猫会帮你记住"
+                    placeholder="å†™ä¸€ç‚¹å¤‡æ³¨ï¼Œå°çŒ«ä¼šå¸®ä½ è®°ä½"
                     value={formData.description}
                     onChange={(event) => setFormData({ ...formData, description: event.target.value })}
                     rows={3}
@@ -1380,7 +1528,7 @@ export default function Home() {
                   />
                 </FieldLabel>
 
-                <FieldLabel label="分类">
+                <FieldLabel label="åˆ†ç±»">
                   <select
                     value={formData.category}
                     onChange={(event) => setFormData({ ...formData, category: event.target.value })}
@@ -1394,10 +1542,10 @@ export default function Home() {
                   </select>
                 </FieldLabel>
 
-                <FieldLabel label="标签">
+                <FieldLabel label="æ ‡ç­¾">
                   <input
                     type="text"
-                    placeholder="用逗号分隔，例如：紧急, 重要"
+                    placeholder="ç”¨é€—å·åˆ†éš”ï¼Œä¾‹å¦‚ï¼šç´§æ€¥, é‡è¦"
                     value={formData.tags}
                     onChange={(event) => setFormData({ ...formData, tags: event.target.value })}
                     className="w-full rounded-2xl border border-rose-100 bg-white px-4 py-3 text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-300 focus:ring-2 focus:ring-rose-200"
@@ -1405,7 +1553,7 @@ export default function Home() {
                 </FieldLabel>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <FieldLabel label="截止日期">
+                  <FieldLabel label="æˆªæ­¢æ—¥æœŸ">
                     <input
                       type="date"
                       value={formData.dueDate}
@@ -1413,7 +1561,7 @@ export default function Home() {
                       className="w-full rounded-2xl border border-rose-100 bg-white px-4 py-3 text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-300 focus:ring-2 focus:ring-rose-200"
                     />
                   </FieldLabel>
-                  <FieldLabel label="截止时间">
+                  <FieldLabel label="æˆªæ­¢æ—¶é—´">
                     <input
                       type="time"
                       value={formData.reminderTime}
@@ -1426,14 +1574,14 @@ export default function Home() {
                 <div className="flex gap-3 pt-2">
                   {editingTaskId && (
                     <button onClick={handleDeleteEditingTask} className="rounded-2xl bg-rose-100 px-4 py-3 font-black text-rose-500">
-                      删除
+                      åˆ é™¤
                     </button>
                   )}
                   <button onClick={closeForm} className="flex-1 rounded-2xl bg-white px-4 py-3 font-black text-stone-500 shadow-sm">
-                    取消
+                    å–æ¶ˆ
                   </button>
                   <button onClick={handleSaveTask} className="flex-1 rounded-2xl bg-stone-900 px-4 py-3 font-black text-white shadow-[0_10px_26px_rgba(39,39,42,0.22)]">
-                    {editingTaskId ? "保存修改" : "创建任务"}
+                    {editingTaskId ? "ä¿å­˜ä¿®æ”¹" : "åˆ›å»ºä»»åŠ¡"}
                   </button>
                 </div>
               </div>
@@ -1446,8 +1594,8 @@ export default function Home() {
             <div className="max-h-[92dvh] w-full max-w-[430px] overflow-y-auto overflow-x-hidden overscroll-contain rounded-t-[34px] border border-white/80 bg-[#fffaf3] p-5 pb-[calc(2rem+env(safe-area-inset-bottom))] shadow-[0_-22px_70px_rgba(120,80,50,0.20)]">
               <div className="mb-5 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-black text-rose-400">{editingNoteId ? "修改猫咪笔记" : "新笔记进小窝"}</p>
-                  <h2 className="text-2xl font-black text-stone-900">{editingNoteId ? "编辑笔记" : "新建笔记"}</h2>
+                  <p className="text-sm font-black text-rose-400">{editingNoteId ? "ä¿®æ”¹çŒ«å’ªç¬”è®°" : "æ–°ç¬”è®°è¿›å°çª"}</p>
+                  <h2 className="text-2xl font-black text-stone-900">{editingNoteId ? "ç¼–è¾‘ç¬”è®°" : "æ–°å»ºç¬”è®°"}</h2>
                 </div>
                 <button onClick={closeNoteForm} className="grid h-11 w-11 place-items-center rounded-2xl bg-white text-stone-400 shadow-sm">
                   <X className="h-6 w-6" />
@@ -1455,17 +1603,17 @@ export default function Home() {
               </div>
 
               <div className="space-y-4">
-                <FieldLabel label="笔记标题" required>
+                <FieldLabel label="ç¬”è®°æ ‡é¢˜" required>
                   <input
                     type="text"
-                    placeholder="比如：今天学到的新东西"
+                    placeholder="æ¯”å¦‚ï¼šä»Šå¤©å­¦åˆ°çš„æ–°ä¸œè¥¿"
                     value={noteForm.title}
                     onChange={(event) => setNoteForm({ ...noteForm, title: event.target.value })}
                     className="w-full rounded-2xl border border-rose-100 bg-white px-4 py-3 text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-300 focus:ring-2 focus:ring-rose-200"
                   />
                 </FieldLabel>
 
-                <FieldLabel label="分类">
+                <FieldLabel label="åˆ†ç±»">
                   <select
                     value={noteForm.category}
                     onChange={(event) => setNoteForm({ ...noteForm, category: event.target.value as NoteCategory })}
@@ -1479,9 +1627,9 @@ export default function Home() {
                   </select>
                 </FieldLabel>
 
-                <FieldLabel label="正文">
+                <FieldLabel label="æ­£æ–‡">
                   <textarea
-                    placeholder="写下笔记内容..."
+                    placeholder="å†™ä¸‹ç¬”è®°å†…å®¹..."
                     value={noteForm.body}
                     onChange={(event) => setNoteForm({ ...noteForm, body: event.target.value })}
                     rows={5}
@@ -1489,21 +1637,21 @@ export default function Home() {
                   />
                 </FieldLabel>
 
-                <FieldLabel label="照片">
+                <FieldLabel label="ç…§ç‰‡">
                   <div className="rounded-2xl border border-rose-100 bg-white p-3">
                     {noteForm.photo ? (
                       <div className="mb-3 overflow-hidden rounded-2xl">
-                        <img src={noteForm.photo} alt="笔记照片" className="max-h-56 w-full object-cover" />
+                        <img src={noteForm.photo} alt="ç¬”è®°ç…§ç‰‡" className="max-h-56 w-full object-cover" />
                       </div>
                     ) : null}
                     <div className="flex gap-2">
                       <label className="flex-1 cursor-pointer rounded-2xl bg-rose-50 px-4 py-3 text-center text-sm font-black text-rose-500">
-                        上传照片
+                        ä¸Šä¼ ç…§ç‰‡
                         <input type="file" accept="image/*" className="hidden" onChange={(event) => handleNotePhotoChange(event.target.files?.[0])} />
                       </label>
                       {noteForm.photo && (
                         <button type="button" onClick={() => setNoteForm({ ...noteForm, photo: "" })} className="rounded-2xl bg-white px-4 py-3 text-sm font-black text-stone-400 shadow-sm">
-                          移除
+                          ç§»é™¤
                         </button>
                       )}
                     </div>
@@ -1519,14 +1667,14 @@ export default function Home() {
                       }}
                       className="rounded-2xl bg-rose-100 px-4 py-3 font-black text-rose-500"
                     >
-                      删除
+                      åˆ é™¤
                     </button>
                   )}
                   <button onClick={closeNoteForm} className="flex-1 rounded-2xl bg-white px-4 py-3 font-black text-stone-500 shadow-sm">
-                    取消
+                    å–æ¶ˆ
                   </button>
                   <button onClick={handleSaveNote} className="flex-1 rounded-2xl bg-stone-900 px-4 py-3 font-black text-white shadow-[0_10px_26px_rgba(39,39,42,0.22)]">
-                    {editingNoteId ? "保存修改" : "创建笔记"}
+                    {editingNoteId ? "ä¿å­˜ä¿®æ”¹" : "åˆ›å»ºç¬”è®°"}
                   </button>
                 </div>
               </div>
@@ -1544,7 +1692,7 @@ export default function Home() {
             className={`flex min-h-11 items-center justify-center gap-2 rounded-2xl text-sm font-black transition ${activeTab === "tasks" ? "bg-rose-100 text-rose-500" : "text-stone-400"}`}
           >
             <PawPrint className="h-5 w-5" strokeWidth={iconStroke} />
-            任务
+            ä»»åŠ¡
           </button>
           <button
             type="button"
@@ -1555,7 +1703,7 @@ export default function Home() {
             className={`flex min-h-11 items-center justify-center gap-2 rounded-2xl text-sm font-black transition ${activeTab === "notes" ? "bg-rose-100 text-rose-500" : "text-stone-400"}`}
           >
             <BookOpen className="h-5 w-5" strokeWidth={iconStroke} />
-            笔记
+            ç¬”è®°
           </button>
         </nav>
         </div>
@@ -1575,3 +1723,5 @@ function FieldLabel({ label, required, children }: { label: string; required?: b
     </label>
   );
 }
+
+
