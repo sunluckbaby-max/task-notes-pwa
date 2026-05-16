@@ -1013,7 +1013,7 @@ export default function Home() {
           <div className="relative flex h-full items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
               <div className="mb-1 flex min-w-0 items-center gap-2">
-                <div className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-rose-100 px-2.5 py-1.5 text-[16px] font-black leading-none text-rose-500 shadow-[0_5px_12px_rgba(251,113,133,0.09)]">
+                <div className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-rose-100 px-2.5 py-1.5 text-[18px] font-black leading-none text-rose-500 shadow-[0_5px_12px_rgba(251,113,133,0.09)]">
                   <Sparkles className="h-4 w-4 shrink-0" strokeWidth={iconStroke} />
                   <span>{activeTab === "tasks" ? "任务小窝" : "猫咪笔记本"}</span>
                 </div>
