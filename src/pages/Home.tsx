@@ -1512,7 +1512,7 @@ export default function Home() {
           </div>
         )}
 
-        <nav className="fixed bottom-[-5rem] left-1/2 z-30 grid w-full max-w-[430px] -translate-x-1/2 grid-cols-2 gap-2 border-t border-white/60 bg-gradient-to-b from-white/82 via-[#fffaf3]/95 to-[#fffaf3] px-4 pb-[calc(5.25rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_22px_rgba(120,80,50,0.06)] backdrop-blur-xl">
+        <nav className="fixed bottom-0 left-1/2 z-30 grid w-full max-w-[430px] -translate-x-1/2 grid-cols-2 gap-2 border-t border-white/60 bg-[#fffaf3]/95 px-4 py-1.5 shadow-[0_-8px_22px_rgba(120,80,50,0.06)] backdrop-blur-xl">
           <button
             type="button"
             onClick={() => {
