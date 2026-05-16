@@ -993,21 +993,21 @@ export default function Home() {
       `}</style>
       <div className="mx-auto h-[100dvh] min-h-[100svh] w-full max-w-[430px] overflow-hidden">
         <div className="flex h-full w-full flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 pb-[calc(18rem+env(safe-area-inset-bottom))] pt-[calc(1.1rem+env(safe-area-inset-top))]">
-        <header className="header-soft-drift relative mb-4 min-h-[148px] overflow-hidden rounded-[28px] border border-white/80 bg-white/80 p-4 shadow-[0_10px_28px_rgba(120,80,50,0.09)] backdrop-blur-xl">
+        <header className="header-soft-drift relative mb-3 min-h-[126px] overflow-hidden rounded-[24px] border border-white/80 bg-white/80 p-3.5 shadow-[0_8px_22px_rgba(120,80,50,0.08)] backdrop-blur-xl">
           <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-rose-200/70" />
           <div className="absolute -bottom-12 left-8 h-28 w-28 rounded-full bg-amber-200/70" />
           <div className="relative flex h-full items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="mb-2 inline-flex max-w-full items-center gap-1.5 whitespace-nowrap rounded-full bg-rose-100 px-3 py-1.5 text-[15px] font-black leading-none text-rose-500 shadow-[0_8px_18px_rgba(251,113,133,0.12)]">
+              <div className="mb-1.5 inline-flex max-w-full items-center gap-1.5 whitespace-nowrap rounded-full bg-rose-100 px-2.5 py-1.5 text-[14px] font-black leading-none text-rose-500 shadow-[0_6px_14px_rgba(251,113,133,0.10)]">
                 <Sparkles className="h-4 w-4 shrink-0" strokeWidth={iconStroke} />
                 {activeTab === "tasks" ? "猫咪任务小窝" : "猫咪笔记本"}
               </div>
-              <p className="truncate text-[13px] font-bold leading-5 text-stone-500">{activeTab === "tasks" ? "让小猫陪你整理每日任务" : "把灵感和生活碎片轻轻收好"}</p>
-              <button type="button" onClick={leaveSpace} className="mt-2 rounded-full bg-white/70 px-3 py-1 text-xs font-black text-rose-400">
+              <p className="truncate text-[12px] font-bold leading-4 text-stone-500">{activeTab === "tasks" ? "让小猫陪你整理每日任务" : "把灵感和生活碎片轻轻收好"}</p>
+              <button type="button" onClick={leaveSpace} className="mt-1.5 rounded-full bg-white/70 px-2.5 py-0.5 text-[11px] font-black text-rose-400">
                 切换同步空间
               </button>
             </div>
-            <div className="cat-float relative -mr-2 h-28 w-28 shrink-0">
+            <div className="cat-float relative -mr-1 h-24 w-24 shrink-0">
               <div className="cat-soft-glow absolute inset-x-5 bottom-2 h-10 rounded-full bg-rose-200/40 blur-xl" />
               <img
                 src="/cat-cutout.png"
@@ -1020,40 +1020,40 @@ export default function Home() {
 
         {activeTab === "tasks" ? (
           <>
-        <section className="mb-4 rounded-[28px] border border-white/80 bg-white/75 p-4 shadow-[0_8px_24px_rgba(120,80,50,0.07)] backdrop-blur">
-          <div className="mb-3 flex items-center justify-between gap-3">
+        <section className="mb-3 rounded-[24px] border border-white/80 bg-white/75 p-3 shadow-[0_7px_20px_rgba(120,80,50,0.06)] backdrop-blur">
+          <div className="mb-2 flex items-center justify-between gap-2">
             <div className="inline-flex min-w-0 items-center gap-2">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-2xl bg-rose-100 text-lg">🐾</span>
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-2xl bg-rose-100 text-base">🐾</span>
               <div className="min-w-0">
-                <p className="text-sm font-black text-stone-800">任务状态</p>
-                <p className="mt-0.5 text-xs font-bold text-stone-400">{summaryHint}</p>
+                <p className="text-[13px] font-black text-stone-800">任务状态</p>
+                <p className="mt-0.5 truncate text-[11px] font-bold text-stone-400">{summaryHint}</p>
               </div>
             </div>
-            <div className="shrink-0 rounded-2xl bg-rose-50 px-3 py-2 text-right">
-              <p className="text-sm font-black text-rose-500">{stats.completed}/{stats.total}</p>
-              <p className="text-[11px] font-black text-stone-400">已完成</p>
+            <div className="shrink-0 rounded-2xl bg-rose-50 px-2.5 py-1.5 text-right">
+              <p className="text-[13px] font-black text-rose-500">{stats.completed}/{stats.total}</p>
+              <p className="text-[10px] font-black text-stone-400">已完成</p>
             </div>
           </div>
-          <div className="h-3 overflow-hidden rounded-full bg-rose-50">
+          <div className="h-2.5 overflow-hidden rounded-full bg-rose-50">
             <div
               className="h-full rounded-full bg-gradient-to-r from-rose-300 via-amber-200 to-emerald-200 transition-all duration-500"
               style={{ width: `${completionPercent}%` }}
             />
           </div>
-          <div className="mt-2 flex items-center justify-between text-[11px] font-black text-stone-300">
+          <div className="mt-1.5 flex items-center justify-between text-[10px] font-black text-stone-300">
             <span>慢慢完成</span>
             <span>{completionPercent}%</span>
           </div>
         </section>
 
-        <label className="mb-4 flex min-h-14 w-full items-center gap-3 rounded-[24px] border border-white/80 bg-white/80 px-4 shadow-[0_8px_24px_rgba(120,80,50,0.06)] backdrop-blur">
-          <Search className="h-5 w-5 text-rose-300" strokeWidth={iconStroke} />
+        <label className="mb-3 flex min-h-12 w-full items-center gap-2.5 rounded-[22px] border border-white/80 bg-white/80 px-3.5 shadow-[0_7px_20px_rgba(120,80,50,0.05)] backdrop-blur">
+          <Search className="h-4.5 w-4.5 text-rose-300" strokeWidth={iconStroke} />
           <input
             type="text"
             placeholder="搜索猫窝里的任务..."
             value={searchText}
             onChange={(event) => setSearchText(event.target.value)}
-            className="min-w-0 flex-1 bg-transparent text-[16px] font-semibold text-stone-800 outline-none placeholder:text-stone-400"
+            className="min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-stone-800 outline-none placeholder:text-stone-400"
           />
         </label>
 
