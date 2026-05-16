@@ -150,6 +150,13 @@ const saveLocalNotes = (spaceCode: string, notes: CatNote[]) => {
   localStorage.setItem(getLocalNotesKey(spaceCode), JSON.stringify(notes));
 };
 
+const createId = () => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
 const trySaveLocalNotes = (spaceCode: string, notes: CatNote[]) => {
   try {
     saveLocalNotes(spaceCode, notes);
@@ -399,11 +406,13 @@ export default function Home() {
 
   const openNewNoteForm = () => {
     resetNoteForm();
+    setSyncMessage("");
     setShowNoteForm(true);
   };
 
   const openEditNoteForm = (note: CatNote) => {
     setEditingNoteId(note.id);
+    setSyncMessage("");
     setNoteForm({
       title: note.title,
       body: note.body,
@@ -670,70 +679,75 @@ export default function Home() {
   };
 
   const handleSaveNote = async () => {
-    if (!noteForm.title.trim()) return;
-
-    const payload = {
-      title: noteForm.title.trim(),
-      body: noteForm.body,
-      category: noteForm.category,
-      photo: noteForm.photo,
-    };
-
-    if (!canSync) {
-      const now = new Date().toISOString();
-      const currentNotes = getLocalNotes(spaceCode);
-      const nextNotes = editingNoteId
-        ? currentNotes.map((note) => (note.id === editingNoteId ? { ...note, ...payload, updatedAt: now } : note))
-        : [{ id: crypto.randomUUID(), ...payload, createdAt: now, updatedAt: now }, ...currentNotes];
-      if (!trySaveLocalNotes(spaceCode, nextNotes)) {
-        setSyncMessage("笔记保存失败：本地空间已满，请先删除旧大图笔记，或确认 Supabase 笔记表已创建。");
-        return;
-      }
-      setNotes(nextNotes);
-      closeNoteForm();
-      return;
-    }
-
     try {
-      if (editingNoteId) {
-        await remoteRequest(`cat_notes?id=eq.${editingNoteId}`, {
-          method: "PATCH",
-          body: JSON.stringify({
-            title: payload.title,
-            body: payload.body || null,
-            category: payload.category,
-            photo: payload.photo || null,
-            updated_at: new Date().toISOString(),
-          }),
-        });
-      } else {
-        await remoteRequest("cat_notes", {
-          method: "POST",
-          body: JSON.stringify({
-            space_code: spaceCode,
-            title: payload.title,
-            body: payload.body || null,
-            category: payload.category,
-            photo: payload.photo || null,
-          }),
-        });
-      }
-
-      await refreshNotes();
-      closeNoteForm();
-    } catch (error) {
-      const now = new Date().toISOString();
-      const currentNotes = getLocalNotes(spaceCode);
-      const nextNotes = editingNoteId
-        ? currentNotes.map((note) => (note.id === editingNoteId ? { ...note, ...payload, updatedAt: now } : note))
-        : [{ id: crypto.randomUUID(), ...payload, createdAt: now, updatedAt: now }, ...currentNotes];
-      if (!trySaveLocalNotes(spaceCode, nextNotes)) {
-        setSyncMessage(error instanceof Error ? `云端保存失败，本地空间也满了：${error.message}` : "云端保存失败，本地空间也满了");
+      if (!noteForm.title.trim()) {
+        setSyncMessage("请先填写笔记标题");
         return;
       }
-      setNotes(nextNotes);
-      closeNoteForm();
-      setSyncMessage(error instanceof Error ? `笔记暂存本地：${error.message}` : "笔记暂存本地");
+
+      const payload = {
+        title: noteForm.title.trim(),
+        body: noteForm.body,
+        category: noteForm.category,
+        photo: noteForm.photo,
+      };
+
+      const saveNoteLocally = (message?: string) => {
+        const now = new Date().toISOString();
+        const currentNotes = getLocalNotes(spaceCode);
+        const nextNotes = editingNoteId
+          ? currentNotes.map((note) => (note.id === editingNoteId ? { ...note, ...payload, updatedAt: now } : note))
+          : [{ id: createId(), ...payload, createdAt: now, updatedAt: now }, ...currentNotes];
+
+        if (!trySaveLocalNotes(spaceCode, nextNotes)) {
+          setSyncMessage("笔记保存失败：本地空间已满，请先删除旧大图笔记，或确认 Supabase 笔记表已创建。");
+          return false;
+        }
+
+        setNotes(nextNotes);
+        closeNoteForm();
+        if (message) setSyncMessage(message);
+        return true;
+      };
+
+      if (!canSync) {
+        saveNoteLocally();
+        return;
+      }
+
+      try {
+        if (editingNoteId) {
+          await remoteRequest(`cat_notes?id=eq.${editingNoteId}`, {
+            method: "PATCH",
+            body: JSON.stringify({
+              title: payload.title,
+              body: payload.body || null,
+              category: payload.category,
+              photo: payload.photo || null,
+              updated_at: new Date().toISOString(),
+            }),
+          });
+        } else {
+          await remoteRequest("cat_notes", {
+            method: "POST",
+            body: JSON.stringify({
+              space_code: spaceCode,
+              title: payload.title,
+              body: payload.body || null,
+              category: payload.category,
+              photo: payload.photo || null,
+            }),
+          });
+        }
+
+        await refreshNotes();
+        closeNoteForm();
+        setSyncMessage("笔记已保存");
+      } catch (error) {
+        setSyncMessage(error instanceof Error ? `云端笔记保存失败：${error.message}` : "云端笔记保存失败");
+      }
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? `笔记保存失败：${error.message}` : "笔记保存失败");
     }
   };
 
@@ -1677,6 +1691,9 @@ export default function Home() {
                   <X className="h-6 w-6" />
                 </button>
               </div>
+              {(syncMessage.includes("笔记") || syncMessage.includes("照片") || syncMessage.includes("标题")) && (
+                <p className="mb-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm font-black leading-5 text-rose-500">{syncMessage}</p>
+              )}
 
               <div className="space-y-4">
                 <FieldLabel label="笔记标题" required>
