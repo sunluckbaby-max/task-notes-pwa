@@ -842,6 +842,26 @@ export default function Home() {
           -webkit-line-clamp: 2;
         }
 
+        .app-tabbar {
+          position: fixed !important;
+          left: 50%;
+          right: auto;
+          bottom: 0 !important;
+          width: 100%;
+          max-width: 430px;
+          transform: translateX(-50%);
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.5rem;
+          padding: 0.45rem 1rem max(env(safe-area-inset-bottom), 0.5rem);
+          border-top: 1px solid rgba(255, 255, 255, 0.72);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 250, 243, 0.98));
+          box-shadow: 0 -8px 22px rgba(120, 80, 50, 0.055);
+          backdrop-filter: blur(22px);
+          -webkit-backdrop-filter: blur(22px);
+          z-index: 80;
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .cat-float,
           .cat-soft-glow,
@@ -1512,7 +1532,7 @@ export default function Home() {
           </div>
         )}
 
-        <nav className="fixed bottom-0 left-1/2 z-30 grid w-full max-w-[430px] -translate-x-1/2 grid-cols-2 gap-2 border-t border-white/60 bg-[#fffaf3]/95 px-4 py-1.5 shadow-[0_-8px_22px_rgba(120,80,50,0.06)] backdrop-blur-xl">
+        <nav className="app-tabbar">
           <button
             type="button"
             onClick={() => {
