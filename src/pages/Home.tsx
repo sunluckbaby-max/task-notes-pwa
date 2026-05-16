@@ -150,6 +150,46 @@ const saveLocalNotes = (spaceCode: string, notes: CatNote[]) => {
   localStorage.setItem(getLocalNotesKey(spaceCode), JSON.stringify(notes));
 };
 
+const parseNotePhotos = (photo: string) => {
+  if (!photo) return [];
+  try {
+    const parsed = JSON.parse(photo);
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string" && item.length > 0) : [photo];
+  } catch {
+    return [photo];
+  }
+};
+
+const encodeNotePhotos = (photos: string[]) => JSON.stringify(photos.filter(Boolean).slice(0, 6));
+
+const resizePhotoFile = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("照片读取失败"));
+    reader.onload = () => {
+      const image = document.createElement("img");
+      image.onerror = () => reject(new Error("照片处理失败"));
+      image.onload = () => {
+        const maxSize = 1200;
+        const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+        const width = Math.max(1, Math.round(image.width * scale));
+        const height = Math.max(1, Math.round(image.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d");
+        if (!context) {
+          reject(new Error("照片处理失败"));
+          return;
+        }
+        context.drawImage(image, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.72));
+      };
+      image.src = String(reader.result || "");
+    };
+    reader.readAsDataURL(file);
+  });
+
 const remoteRequest = async (path: string, options: RequestInit = {}) => {
   if (!supabaseUrl || !supabaseAnonKey) throw new Error("Supabase is not configured");
 
@@ -243,7 +283,7 @@ export default function Home() {
     };
 
     ensureMeta("theme-color", "#fff7ed");
-    ensureMeta("apple-mobile-web-app-status-bar-style", "default");
+    ensureMeta("apple-mobile-web-app-status-bar-style", "black-translucent");
   }, []);
 
   const refreshTasks = async (targetSpaceCode = spaceCode) => {
@@ -738,22 +778,26 @@ export default function Home() {
     }
   };
 
-  const handleNotePhotoChange = (file?: File) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setNoteForm((current) => ({ ...current, photo: String(reader.result || "") }));
-    };
-    reader.readAsDataURL(file);
+  const handleNotePhotoChange = async (files?: FileList | null) => {
+    const selected = Array.from(files || []).filter((file) => file.type.startsWith("image/")).slice(0, 6);
+    if (selected.length === 0) return;
+    try {
+      const photos = await Promise.all(selected.map((file) => resizePhotoFile(file)));
+      setNoteForm((current) => ({ ...current, photo: encodeNotePhotos(photos) }));
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? error.message : "照片上传失败");
+    }
   };
 
-  const handleNoteDetailPhotoChange = (file?: File) => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setNoteDetailDraft((current) => ({ ...current, photo: String(reader.result || "") }));
-    };
-    reader.readAsDataURL(file);
+  const handleNoteDetailPhotoChange = async (files?: FileList | null) => {
+    const selected = Array.from(files || []).filter((file) => file.type.startsWith("image/")).slice(0, 6);
+    if (selected.length === 0) return;
+    try {
+      const photos = await Promise.all(selected.map((file) => resizePhotoFile(file)));
+      setNoteDetailDraft((current) => ({ ...current, photo: encodeNotePhotos(photos) }));
+    } catch (error) {
+      setSyncMessage(error instanceof Error ? error.message : "照片上传失败");
+    }
   };
 
   const handleDeleteEditingTask = async () => {
@@ -1194,11 +1238,13 @@ export default function Home() {
               ) : (
                 filteredNotes.map((note) => {
                   const category = noteCategories.find((item) => item.id === note.category) || noteCategories[3];
+                  const photos = parseNotePhotos(note.photo);
+                  const coverPhoto = photos[0] || "";
                   return (
                     <article key={note.id} className="overflow-hidden rounded-[24px] border border-white/80 bg-white/80 shadow-[0_7px_20px_rgba(120,80,50,0.06)] backdrop-blur">
-                      {note.photo && (
+                      {coverPhoto && (
                         <button type="button" onClick={() => setViewingNoteId(note.id)} className="block h-36 w-full overflow-hidden">
-                          <img src={note.photo} alt={note.title} className="h-full w-full object-cover" />
+                          <img src={coverPhoto} alt={note.title} className="h-full w-full object-cover" />
                         </button>
                       )}
                       <div className="flex gap-2.5 p-3">
@@ -1208,10 +1254,10 @@ export default function Home() {
                           <div className="mt-2 flex flex-wrap items-center gap-1.5">
                             <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-black ${category.tint}`}>{category.name}</span>
                             <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-[11px] font-black text-stone-400">{formatDate(note.updatedAt.slice(0, 10))}</span>
-                            {note.photo && (
+                            {photos.length > 0 && (
                               <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-[11px] font-black text-rose-500">
                                 <Image className="h-3 w-3" strokeWidth={iconStroke} />
-                                照片
+                                {photos.length} 张照片
                               </span>
                             )}
                           </div>
@@ -1446,11 +1492,17 @@ export default function Home() {
                   </FieldLabel>
                   <FieldLabel label="照片">
                     <div className="rounded-2xl border border-rose-100 bg-white p-3">
-                      {noteDetailDraft.photo && <img src={noteDetailDraft.photo} alt="笔记照片" className="mb-3 max-h-56 w-full rounded-2xl object-cover" />}
+                      {parseNotePhotos(noteDetailDraft.photo).length > 0 && (
+                        <div className="mb-3 grid grid-cols-2 gap-2">
+                          {parseNotePhotos(noteDetailDraft.photo).map((photo, index) => (
+                            <img key={`${photo.slice(0, 24)}-${index}`} src={photo} alt={`笔记照片 ${index + 1}`} className="h-28 w-full rounded-2xl object-cover" />
+                          ))}
+                        </div>
+                      )}
                       <div className="flex gap-2">
                         <label className="flex-1 cursor-pointer rounded-2xl bg-rose-50 px-4 py-3 text-center text-sm font-black text-rose-500">
                           上传照片
-                          <input type="file" accept="image/*" className="hidden" onChange={(event) => handleNoteDetailPhotoChange(event.target.files?.[0])} />
+                          <input type="file" accept="image/*" multiple className="hidden" onChange={(event) => handleNoteDetailPhotoChange(event.target.files)} />
                         </label>
                         {noteDetailDraft.photo && (
                           <button type="button" onClick={() => setNoteDetailDraft((current) => ({ ...current, photo: "" }))} className="rounded-2xl bg-white px-4 py-3 text-sm font-black text-stone-400 shadow-sm">
@@ -1471,7 +1523,13 @@ export default function Home() {
                 </div>
               ) : (
                 <>
-                  {viewingNote.photo && <img src={viewingNote.photo} alt={viewingNote.title} className="mb-5 max-h-[320px] w-full rounded-[28px] object-cover" />}
+                  {parseNotePhotos(viewingNote.photo).length > 0 && (
+                    <div className="mb-5 grid grid-cols-2 gap-2">
+                      {parseNotePhotos(viewingNote.photo).map((photo, index) => (
+                        <img key={`${photo.slice(0, 24)}-${index}`} src={photo} alt={`${viewingNote.title} 照片 ${index + 1}`} className="h-36 w-full rounded-[22px] object-cover" />
+                      ))}
+                    </div>
+                  )}
                   <p className="mb-2 text-xs font-black uppercase tracking-wider text-rose-300">Cat Note</p>
                   <h2 className="break-words text-3xl font-black leading-tight text-stone-900">{viewingNote.title}</h2>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -1639,15 +1697,17 @@ export default function Home() {
 
                 <FieldLabel label="照片">
                   <div className="rounded-2xl border border-rose-100 bg-white p-3">
-                    {noteForm.photo ? (
-                      <div className="mb-3 overflow-hidden rounded-2xl">
-                        <img src={noteForm.photo} alt="笔记照片" className="max-h-56 w-full object-cover" />
+                    {parseNotePhotos(noteForm.photo).length > 0 ? (
+                      <div className="mb-3 grid grid-cols-2 gap-2">
+                        {parseNotePhotos(noteForm.photo).map((photo, index) => (
+                          <img key={`${photo.slice(0, 24)}-${index}`} src={photo} alt={`笔记照片 ${index + 1}`} className="h-28 w-full rounded-2xl object-cover" />
+                        ))}
                       </div>
                     ) : null}
                     <div className="flex gap-2">
                       <label className="flex-1 cursor-pointer rounded-2xl bg-rose-50 px-4 py-3 text-center text-sm font-black text-rose-500">
                         上传照片
-                        <input type="file" accept="image/*" className="hidden" onChange={(event) => handleNotePhotoChange(event.target.files?.[0])} />
+                        <input type="file" accept="image/*" multiple className="hidden" onChange={(event) => handleNotePhotoChange(event.target.files)} />
                       </label>
                       {noteForm.photo && (
                         <button type="button" onClick={() => setNoteForm({ ...noteForm, photo: "" })} className="rounded-2xl bg-white px-4 py-3 text-sm font-black text-stone-400 shadow-sm">
