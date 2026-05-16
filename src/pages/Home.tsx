@@ -1234,7 +1234,7 @@ export default function Home() {
               </div>
             </section>
 
-            <label className="mb-4 flex min-h-14 w-full items-center gap-3 rounded-[24px] border border-white/80 bg-white/80 px-4 shadow-[0_8px_24px_rgba(120,80,50,0.06)] backdrop-blur">
+            <label className="mb-4 flex min-h-10 w-full items-center gap-3 rounded-[24px] border border-white/80 bg-white/80 px-4 shadow-[0_8px_24px_rgba(120,80,50,0.06)] backdrop-blur">
               <Search className="h-5 w-5 text-rose-300" strokeWidth={iconStroke} />
               <input
                 type="text"
